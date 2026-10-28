@@ -1,0 +1,1093 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Fake Artist</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@400;600;700&display=swap" rel="stylesheet">
+<style>
+  :root { --ink: #3d3558; --bg: #a8d5b8; --yellow: #f3d77a; --pink: #eb92b2; --green: #7ed3ac; }
+  * { box-sizing: border-box; }
+  [hidden] { display: none !important; }
+  body {
+    margin: 0; color: var(--ink); font: 17px/1.4 'Fredoka', system-ui, sans-serif;
+    background-color: var(--bg);
+    background-image: radial-gradient(rgba(255,255,255,.28) 2px, transparent 2px);
+    background-size: 30px 30px;
+    min-height: 100vh;
+  }
+  #wrap { max-width: 840px; margin: 0 auto; padding: 16px; }
+  .logo {
+    margin: 4px 0 14px; text-align: center; font-size: 44px; font-weight: 700; color: #fff;
+    -webkit-text-stroke: 2px var(--ink); paint-order: stroke fill;
+    text-shadow: 0 5px 0 var(--ink); transform: rotate(-2deg);
+  }
+  .card { background: #fffcf5; border: 3px solid var(--ink); border-radius: 20px; box-shadow: 0 6px 0 var(--ink); padding: 14px; margin-bottom: 14px; }
+  h2 { margin: 4px 0 8px; font-size: 30px; }
+  .home { max-width: 380px; margin: 28px auto; display: flex; flex-direction: column; gap: 12px; text-align: center; }
+  .home input { width: 100%; text-align: center; }
+  .homewrap { max-width: 380px; margin: 0 auto; display: flex; flex-direction: column; gap: 16px; }
+  .homewrap .home { margin: 0; max-width: none; }
+  .tagline { margin: 0; text-align: center; font-size: 19px; font-weight: 600; }
+  .or { display: flex; align-items: center; gap: 10px; font-size: 14px; opacity: .6; }
+  .or::before, .or::after { content: ''; flex: 1; border-top: 3px solid #e6e3ee; }
+  .join { display: flex; gap: 10px; }
+  .join input { flex: 1; min-width: 0; }
+  input, select {
+    font: inherit; padding: 8px 12px; border: 3px solid var(--ink); border-radius: 12px; background: #fffcf5; color: var(--ink);
+  }
+  button {
+    font: inherit; font-weight: 600; padding: 9px 18px; border: 3px solid var(--ink); border-radius: 14px;
+    background: var(--yellow); color: var(--ink); box-shadow: 0 4px 0 var(--ink); cursor: pointer;
+    transition: transform .08s, box-shadow .08s;
+  }
+  button:hover:not(:disabled) { transform: translateY(-2px); box-shadow: 0 6px 0 var(--ink); }
+  button:active:not(:disabled) { transform: translateY(4px); box-shadow: 0 0 0 var(--ink); }
+  button:disabled { opacity: .45; cursor: default; }
+  button.alt { background: #fffcf5; }
+  button.icon { padding: 4px 10px; box-shadow: 0 3px 0 var(--ink); }
+  .row { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; margin: 10px 0; }
+  .muted { opacity: .65; }
+  .note { background: var(--yellow); border: 3px solid var(--ink); padding: 8px 12px; border-radius: 12px; }
+  #err { text-align: center; margin-bottom: 10px; }
+  #err:not(:empty) { background: var(--pink); border: 3px solid var(--ink); border-radius: 12px; padding: 6px 12px; font-weight: 600; }
+  #top { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; padding: 10px 14px; }
+  .code { background: var(--yellow); border: 3px solid var(--ink); border-radius: 10px; padding: 0 10px; letter-spacing: .15em; font-weight: 700; font-size: 22px; }
+  .copyrow { display: flex; align-items: center; gap: 8px; }
+  .stat { display: flex; flex-direction: column; align-items: flex-start; gap: 4px; }
+  .stat small { font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: .08em; opacity: .6; }
+  #top.local .stat.grow { border-left: 0; padding-left: 0; }
+  .stat.grow { flex: 1; min-width: 0; border-left: 3px solid #e6e3ee; padding-left: 14px; }
+  .settings { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 14px; }
+  .field { display: flex; flex-direction: column; gap: 4px; font-weight: 600; font-size: 14px; }
+  .field select { width: 100%; font-weight: 400; font-size: 16px; }
+  .field.wide { grid-column: 1 / -1; }
+  .pills { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 12px; }
+  .pill { background: #ebeaf7; border: 3px solid var(--ink); border-radius: 999px; padding: 2px 12px; font-weight: 600; }
+  .start { width: 100%; margin-top: 16px; font-size: 20px; }
+  .card > :last-child { margin-bottom: 0; }
+  .check { display: flex; gap: 8px; align-items: center; text-align: left; font-size: 15px; }
+  .home .check input { width: auto; }
+  #names { display: flex; flex-direction: column; gap: 10px; }
+  #cards { text-align: center; }
+  .cardgrid { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 20px; margin: 18px 0; }
+  .flipcard { perspective: 900px; height: var(--h, 280px); cursor: pointer; }
+  .flipcard .inner { position: relative; width: 100%; height: 100%; transition: transform .5s; transform-style: preserve-3d; }
+  .flipcard.open .inner { transform: rotateY(180deg); }
+  .face {
+    position: absolute; inset: 0; backface-visibility: hidden; -webkit-backface-visibility: hidden;
+    border: 3px solid var(--ink); border-radius: 16px; box-shadow: 0 5px 0 var(--ink);
+    display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; padding: 10px;
+  }
+  .face.back {
+    background-color: var(--c); color: #fff; font-size: 30px; font-weight: 700;    text-shadow: 0 1px 0 var(--ink), 1px 0 0 var(--ink), -1px 0 0 var(--ink), 0 -1px 0 var(--ink);
+  }
+  .face.front { background: #fbf3d9; transform: rotateY(180deg); }
+  .face.front.fake { background: var(--pink); }
+  .face.front { font-size: 19px; gap: 8px; }
+  .face .role { font-size: 64px; line-height: 1; }
+  .face .word { font-size: 34px; line-height: 1.1; }
+  .face small { opacity: .7; font-size: 15px; }
+  .face.back i { display: none; position: absolute; top: 8px; right: 10px; font-style: normal; background: #fffcf5; color: var(--ink); border: 2px solid var(--ink); border-radius: 50%; width: 26px; height: 26px; line-height: 22px; font-size: 16px; text-shadow: none; }
+  .flipcard.seen .face.back i { display: block; }
+  .flipcard.seen:not(.open) { cursor: default; opacity: .55; }
+  #players { display: flex; gap: 8px; flex-wrap: wrap; flex: 1; }
+  .chip {
+    display: inline-flex; align-items: center; gap: 6px; padding: 3px 12px; border-radius: 999px;
+    background: var(--c, #eee); border: 3px solid var(--ink); font-weight: 600; color: #fff;
+    text-shadow: 0 1px 0 var(--ink), 1px 0 0 var(--ink), -1px 0 0 var(--ink), 0 -1px 0 var(--ink);
+  }
+  .chip.off { background: #fffcf5; color: var(--ink); text-shadow: none; }
+  .chip.on { animation: bob .6s ease-in-out infinite alternate; box-shadow: 0 0 0 4px var(--yellow); }
+  @keyframes bob { to { transform: translateY(-4px) rotate(-2deg); } }
+  #bar { display: flex; gap: 12px; align-items: center; justify-content: space-between; margin-bottom: 10px; }
+  #banner { flex: 1; padding: 8px 14px; border: 3px solid var(--ink); border-radius: 14px; background: #ebeaf7; }
+  #banner.fake { background: var(--pink); }
+  .timer {
+    width: 58px; height: 58px; flex: none; border-radius: 50%; display: grid; place-items: center;
+    background: var(--green); border: 3px solid var(--ink); box-shadow: 0 4px 0 var(--ink); font-size: 26px; font-weight: 700;
+  }
+  .timer.hot { background: var(--pink); animation: pulse .4s ease-in-out infinite alternate; }
+  @keyframes pulse { to { transform: scale(1.15) rotate(6deg); } }
+  #stage { position: relative; width: min(100%, calc(50vh * 4 / 3)); margin: 0 auto; }
+  #nextup {
+    position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center;
+    background: rgba(255,255,255,.88); border: 3px solid var(--ink); border-radius: 14px; text-align: center;
+  }
+  #nextup h2, #nextup p { margin: 0; }
+  #game.gated #right { visibility: hidden; }
+  #nextup .start { width: auto; margin-top: 16px; padding-inline: 28px; }
+  #nextup .big { margin: 10px 0; }
+  #stage.small { width: min(100%, calc(34vh * 4 / 3)); }
+  #controls { background: #fbf3d9; border: 3px solid var(--ink); border-radius: 14px; padding: 8px 14px; margin-bottom: 12px; }
+  #controls p { margin: 6px 0; }
+  #controls .row { margin: 8px 0; }
+  #controls.result { min-height: 170px; }
+  .big .chip { font-size: 34px; padding: 6px 26px; }
+  #cv {
+    display: block; width: 100%; aspect-ratio: 4 / 3; background: #fffcf5; border: 3px solid var(--ink); border-radius: 14px;
+    touch-action: none; background-image: radial-gradient(#ece8f3 1.5px, transparent 1.5px); background-size: 24px 24px;
+  }
+  #cv.mine { cursor: crosshair; }
+  #ink { height: 16px; background: #eee; border: 3px solid var(--ink); border-radius: 10px; margin-top: 12px; overflow: hidden; }
+  #endbtns { margin-left: auto; display: flex; gap: 8px; }
+  #finbtn.sel { background: var(--yellow); }
+  #brushes { display: flex; gap: 8px; align-items: center; margin-top: 14px; font-weight: 600; }
+  .brush { width: 46px; height: 46px; padding: 0; display: grid; place-items: center; background: #fffcf5; }
+  .brush i { display: block; border-radius: 50%; background: var(--ink); }
+  .brush.sel { background: var(--yellow); }
+  #inkfill { height: 100%; width: 100%; background: var(--ink); transition: width .05s; }
+  .turn { font-weight: 700; font-size: 20px; }
+  .vote { background: var(--c); color: #fff; text-shadow: 0 1px 0 var(--ink), 1px 0 0 var(--ink), -1px 0 0 var(--ink), 0 -1px 0 var(--ink); }
+  .vline { margin: 6px 0; animation: pop .25s ease-out; }
+  .big { font-size: 40px; font-weight: 700; animation: pop .4s cubic-bezier(.3, 1.8, .5, 1); }
+  @keyframes pop { from { transform: scale(.3); opacity: 0; } }
+  .win { color: #3f8f6b; }
+  .lose { color: #c4577f; }
+  button.infobtn { width: 36px; height: 36px; padding: 0; border-radius: 50%; display: grid; place-items: center; font-family: Georgia, serif; font-style: italic; font-weight: 700; font-size: 20px; line-height: 1; background: #fffcf5; }
+  .loghead { position: relative; max-width: 380px; margin: 0 auto; }
+  .loghead .infobtn { position: absolute; top: 4px; right: 0; }
+  #wrap:has(#room:not([hidden])) .loghead .infobtn { display: none; }
+  .overlay { position: fixed; inset: 0; z-index: 10; background: rgba(27,17,64,.55); display: grid; place-items: center; padding: 16px; }
+  .modal { position: relative; width: min(100%, 460px); max-height: 100%; overflow-y: auto; margin: 0; padding: 18px 20px; }
+  .modal h2 { margin: 0 36px 8px 0; }
+  .modal h3 { margin: 14px 0 4px; font-size: 18px; }
+  .modal p, .modal ul { margin: 0; font-size: 16px; }
+  .modal ul { padding-left: 20px; }
+  .modal .x { position: absolute; top: 12px; right: 12px; width: 34px; height: 34px; padding: 0; border-radius: 50%; }
+  .av { display: inline-block; width: 1.5em; height: 1.5em; flex: none; vertical-align: middle; text-shadow: none; }
+  .av svg { display: block; width: 100%; height: 100%; }
+  .chip .av { width: 1.7em; height: 1.7em; margin: -3px 0 -3px -6px; }
+  .vote { display: inline-flex; align-items: center; gap: 8px; }
+  .vote .av { width: 1.7em; height: 1.7em; margin: -3px 0 -3px -4px; }
+  .face.back .av { width: 130px; height: 130px; margin-bottom: 0; }
+  .av.huge { width: 120px; height: 120px; justify-self: center; }
+  .avpick { position: relative; display: grid; grid-template-columns: auto 1fr auto; align-items: center; gap: 8px; background: #e3f1e8; border: 3px solid var(--ink); border-radius: 16px; padding: 14px 12px; }
+  .swatches { grid-column: 1 / -1; display: flex; flex-wrap: wrap; justify-content: center; gap: 5px; margin-top: 4px; }
+  .sw { position: relative; width: 22px; height: 22px; padding: 0; border-width: 2.5px; border-radius: 50%; box-shadow: none; }
+  .sw:hover:not(:disabled) { transform: scale(1.12); box-shadow: none; }
+  .sw:active:not(:disabled) { transform: scale(.95); box-shadow: none; }
+  .sw.sel { box-shadow: 0 0 0 2px #fffcf5, 0 0 0 5px var(--ink); }
+  .sw.sel:hover:not(:disabled) { box-shadow: 0 0 0 2px #fffcf5, 0 0 0 5px var(--ink); }
+  .sw.custom { display: block; border: 2.5px solid var(--ink); background: conic-gradient(#f28b82, #f3d77a, #9bd77f, #7fb8ec, #f29bd6, #f28b82); cursor: pointer; transition: transform .08s; }
+  .sw.custom:hover { transform: scale(1.12); }
+  .sw.custom input { position: absolute; inset: 0; width: 100%; height: 100%; padding: 0; border: 0; opacity: 0; cursor: pointer; }
+  .avcenter { display: flex; flex-direction: column; align-items: center; gap: 6px; }
+  .arrows { display: flex; flex-direction: column; gap: 8px; }
+  button.arrow { width: 44px; height: 34px; padding: 0; display: grid; place-items: center; background: #fffcf5; box-shadow: 0 3px 0 var(--ink); }
+  button.arrow svg { width: 20px; height: 20px; }
+  button.arrow.flip svg { transform: scaleX(-1); }
+  button.dice { width: 44px; height: 34px; padding: 0; display: grid; place-items: center; background: #fffcf5; box-shadow: 0 3px 0 var(--ink); }
+  button.dice svg { width: 22px; height: 22px; }
+  button.go, button.blue { color: #fff; text-shadow: 0 2px 0 var(--ink); }
+  button.go { background: #74bf83; font-size: 26px; padding: 10px 18px; }
+  button.blue { background: #7a9fd4; font-size: 19px; }
+  .av-btn { padding: 2px; border-radius: 50%; box-shadow: 0 3px 0 var(--ink); }
+  .av-btn .av { width: 40px; height: 40px; }
+  #game { display: flex; flex-direction: column; }
+  #right, #tools { display: contents; }
+  #side { display: none; }
+  #bar { order: 0; } #controls { order: 1; } #stage { order: 2; } #ink { order: 3; } #brushes { order: 4; }
+  #ink, #brushes { width: min(100%, calc(50vh * 4 / 3)); margin-inline: auto; }
+  #tools:not(:has(> :not([hidden]))) { display: none; }
+  @media (min-width: 900px) {
+    #wrap:has(#game:not([hidden])) { max-width: 1500px; padding-top: 10px; }
+    #wrap:has(#game:not([hidden])) .loghead { display: none; }
+    #room:has(#game:not([hidden])) { position: relative; width: min(100%, calc(532px + (100vh - 130px) * 4 / 3)); margin-inline: auto; }
+    #room:has(#game:not([hidden])) #top { position: absolute; top: 8px; right: 14px; z-index: 2; background: none; border: 0; box-shadow: none; padding: 0; margin: 0; }
+    #room:has(#game:not([hidden])) #top .stat { display: none; }
+    #game {
+      display: grid; grid-template-columns: 200px minmax(0, calc((100vh - 130px) * 4 / 3)) 290px; gap: 14px;
+      justify-content: center; align-items: start; background: none; border: 0; box-shadow: none; padding: 0; margin: 0;
+    }
+    #bar, #controls, #stage, #ink, #brushes { order: 0; }
+    #bar { grid-column: 1 / -1; margin: 0; background: #fffcf5; border: 3px solid var(--ink); border-radius: 16px; box-shadow: 0 4px 0 var(--ink); padding: 6px 12px; min-height: 62px; padding-right: 210px; }
+    #bar .timer { order: -1; }
+    #banner { background: none; border: 0; text-align: center; font-size: 20px; border-radius: 12px; }
+    #banner.fake { background: var(--pink); }
+    #side { display: flex; flex-direction: column; gap: 8px; background: #fffcf5; border: 3px solid var(--ink); border-radius: 16px; box-shadow: 0 4px 0 var(--ink); padding: 10px; }
+    #side .chip { width: 100%; }
+    #stage, #stage.small { width: 100%; }
+    #right { display: flex; flex-direction: column; gap: 14px; }
+    #controls { margin-bottom: 0; }
+    #controls .vote { width: 100%; }
+    #tools { display: block; background: #fffcf5; border: 3px solid var(--ink); border-radius: 16px; box-shadow: 0 4px 0 var(--ink); padding: 12px; }
+    #tools:not(:has(> :not([hidden]))) { display: none; }
+    #ink, #brushes { width: auto; margin-inline: 0; }
+    #ink { margin-top: 0; }
+    #brushes { flex-wrap: wrap; justify-content: flex-start; margin-top: 12px; }
+    #brushes:first-child { margin-top: 0; }
+    #endbtns { width: 100%; margin-left: 0; margin-top: 4px; }
+    #endbtns button { flex: 1; }
+  }
+  .homeleft, .homeright { display: flex; flex-direction: column; gap: 12px; }
+  @media (min-width: 760px) {
+    .homewrap { max-width: 780px; }
+    .homewrap .home { flex-direction: row; align-items: stretch; gap: 22px; padding: 18px; }
+    .loghead { max-width: 780px; }
+    .homeleft { flex: 0.7; }
+    .homeleft .avpick { flex: 1; gap: 4px; }
+    .homeleft .av.huge { width: 128px; height: 128px; }
+    .homeleft button.arrow { width: 36px; }
+    .homeright { flex: 1; justify-content: center; gap: 14px; }
+  }
+</style>
+</head>
+<body>
+<div id="wrap">
+  <div class="loghead">
+    <h1 class="logo">Fake Artist</h1>
+    <button class="infobtn" onclick="showHelp(true)" title="How to play" aria-label="How to play">i</button>
+  </div>
+  <div id="err"></div>
+
+  <section id="home" class="homewrap">
+    <p class="tagline">Everyone adds to one drawing.<br>One of you has no idea what it is.</p>
+    <div class="card home">
+      <div class="homeleft">
+      <div class="avpick">
+        <div class="arrows" id="arrL"></div>
+        <div class="avcenter">
+          <div id="homeav" class="av huge"></div>
+          <button class="dice" id="dicebtn" onclick="randAv()" title="Randomize" aria-label="Randomize avatar"></button>
+        </div>
+        <div class="arrows" id="arrR"></div>
+        <div class="swatches" id="swatches"></div>
+      </div>
+      <input id="name" placeholder="Enter your name" maxlength="16">
+      </div>
+      <div class="homeright">
+      <input id="code" placeholder="Room code" maxlength="4" style="text-transform: uppercase">
+      <button class="go" onclick="join()">Join!</button>
+      <button class="blue" onclick="create()">Create room</button>
+      <button class="blue" onclick="showLocal()">Play on one device</button>
+      </div>
+    </div>
+  </section>
+
+  <section id="local" class="card home" hidden>
+    <h2>Players on this device</h2>
+    <div id="names"></div>
+    <button class="alt" id="addp" onclick="addPlayer()">+ Add player</button>
+    <label class="check"><input type="checkbox" id="quick"> Quick mode: skip cards and pass screens (for testing)</label>
+    <button onclick="startLocal()">Start game</button>
+    <button class="alt" onclick="leave()">Back</button>
+  </section>
+
+  <section id="room" hidden>
+    <div id="top" class="card">
+      <div id="codestat" class="stat"><small>Room code</small><div class="copyrow"><span id="roomcode" class="code"></span><button id="copy" class="alt icon" onclick="copyCode()">Copy</button></div></div>
+      <div class="stat grow"><small id="plabel"></small><div id="players"></div></div>
+      <button class="alt icon infobtn" onclick="showHelp(true)" title="How to play" aria-label="How to play">i</button>
+      <button id="mute" class="alt icon" onclick="toggleMute()"></button>
+      <button class="alt icon" onclick="leave()">Leave</button>
+    </div>
+    <div id="cards" class="card" hidden></div>
+    <div id="lobby" class="card" hidden></div>
+    <div id="game" class="card" hidden>
+      <div id="bar"><div id="banner"></div><div id="timer" class="timer" hidden></div></div>
+      <div id="side"></div>
+      <div id="stage"><canvas id="cv"></canvas><div id="nextup" hidden></div></div>
+      <div id="right">
+        <div id="controls"></div>
+        <div id="tools">
+        <div id="ink" hidden><div id="inkfill"></div></div>
+        <div id="brushes" hidden>
+          <span>Brush</span>
+          <button class="brush" data-w="5" onclick="setBrush(5)" title="Thin"><i style="width:8px;height:8px"></i></button>
+          <button class="brush" data-w="10" onclick="setBrush(10)" title="Medium"><i style="width:15px;height:15px"></i></button>
+          <button class="brush" data-w="20" onclick="setBrush(20)" title="Thick"><i style="width:26px;height:26px"></i></button>
+          <span id="endbtns">
+            <button id="endbtn" class="alt" onclick="send({t:'endTurn'})" hidden>End turn</button>
+            <button id="finbtn" class="alt" onclick="send({t:'finishDrawing'})" hidden>Finish drawing</button>
+          </span>
+        </div>
+        </div>
+      </div>
+    </div>
+  </section>
+</div>
+
+<div id="help" class="overlay" hidden onclick="if (event.target === this) showHelp(false)">
+  <div class="card modal" role="dialog" aria-label="How to play">
+    <button class="alt x" onclick="showHelp(false)" aria-label="Close">&times;</button>
+    <h2>How to play</h2>
+    <p>Everyone builds one drawing together. All but one player know the secret word. The <b>fake artist</b> only knows the category and has to bluff.</p>
+    <h3>Each turn</h3>
+    <ul>
+      <li>Players take turns adding to the shared canvas. Draw enough to show you know the word, but not so much that the fake artist can work it out.</li>
+      <li><b>Ink budget mode:</b> each turn you get a limited amount of ink and can draw several strokes until it runs out.</li>
+      <li><b>Free whiteboard mode:</b> draw as much as you like on your turn, then tap End turn.</li>
+      <li><b>One stroke each mode:</b> one stroke per turn, any length.</li>
+      <li><b>Rounds:</b> the host can set a fixed number of rounds, or pick "Until players vote to end". Then everyone votes after each round on whether the drawing is done, and a majority of yes ends it. During a round, tap Finish drawing to vote to stop early. If a majority of players do, it goes straight to the vote on who the fake is. Tap again to take your vote back.</li>
+    </ul>
+    <h3>Vote</h3>
+    <p>When drawing ends, everyone secretly votes for who they think the fake artist is. A tie lets the fake artist escape.</p>
+    <h3>Winning</h3>
+    <ul>
+      <li>If the fake artist is not caught, they win.</li>
+      <li>If they are caught, they get one chance to guess the word. A right guess still wins it for them.</li>
+      <li>Otherwise the real artists win.</li>
+    </ul>
+    <h3>One device</h3>
+    <p>Each player taps their own card to see their role and word, and taps it again to hide it. Secret votes are passed around the device one player at a time.</p>
+  </div>
+</div>
+
+<script>
+const W = 800, H = 600;
+const AV_PARTS = [0, 6, 6, 5];
+const SKINS = ['#f28b82', '#f6b26b', '#f3d77a', '#9bd77f', '#7ed3ac', '#7fb8ec', '#b3a1ee', '#f29bd6'];
+const DOT = (x, y, r) => `<circle cx="${x}" cy="${y}" r="${r}" fill="#3d3558" stroke="none"/>`;
+const EYES = [
+  DOT(24, 28, 3.2) + DOT(40, 28, 3.2),
+  '<path d="M18 21l11 5M46 21l-11 5"/>' + DOT(25, 30, 2.8) + DOT(39, 30, 2.8),
+  '<path d="M19 30q5-8 10 0M35 30q5-8 10 0"/>',
+  '<circle cx="24" cy="28" r="6.5" fill="#fff"/><circle cx="40" cy="28" r="6.5" fill="#fff"/>' + DOT(25.5, 29, 2.6) + DOT(38.5, 29, 2.6),
+  '<path d="M19 28h10M35 28h10"/>',
+  '<path d="M20 24l8 8M28 24l-8 8M36 24l8 8M44 24l-8 8"/>',
+];
+const MOUTHS = [
+  '<path d="M22 41q10 9 20 0"/>',
+  '<path d="M22 47q10-9 20 0"/>',
+  '<ellipse cx="32" cy="44" rx="6" ry="5" fill="#3d3558"/>',
+  '<path d="M24 44h16"/>',
+  '<path d="M20 44l4-4 4 4 4-4 4 4 4-4 4 4"/>',
+  '<path d="M22 41q10 9 20 0"/><path d="M29 46q3 7 7 0z" fill="#ff5fa2"/>',
+];
+const HATS = [
+  '',
+  '<rect x="21" y="-6" width="22" height="19" rx="2" fill="#5b4b8a"/><rect x="21" y="5" width="22" height="5" fill="#f3d77a"/><ellipse cx="32" cy="13" rx="16" ry="4" fill="#5b4b8a"/>',
+  '<g transform="translate(46 14) rotate(18)" fill="#f58fb3"><path d="M0 0L-13-8V8z"/><path d="M0 0L13-8V8z"/><circle r="3.6"/></g>',
+  '<path d="M30 13L28 0M35 13L35 -1M40 13L43 1" stroke-width="3.5"/>',
+  '<path d="M31 13L29 0M37 13L40 1" stroke-width="3.5"/>',
+];
+const avatarSvg = (a) => `<svg viewBox="0 0 64 64" fill="none" stroke="#3d3558" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><g transform="translate(2.6 7) scale(.92)"><path d="M3 58C3 28 14 12 32 12s29 16 29 46z" fill="${a[0]}"/>${EYES[a[1]]}${MOUTHS[a[2]]}${HATS[a[3] ?? 0]}</g></svg>`;
+const av = (a) => `<span class="av">${avatarSvg(a ?? [SKINS[2], 0, 0, 0])}</span>`;
+const randomAv = () => AV_PARTS.map((n, i) => (i ? Math.floor(Math.random() * n) : SKINS[Math.floor(Math.random() * SKINS.length)]));
+const DICE = '<svg viewBox="0 0 24 24" fill="none" stroke="#3d3558" stroke-width="2" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="4" fill="#fff"/><circle cx="8.5" cy="8.5" r="1.4" fill="#3d3558"/><circle cx="15.5" cy="8.5" r="1.4" fill="#3d3558"/><circle cx="12" cy="12" r="1.4" fill="#3d3558"/><circle cx="8.5" cy="15.5" r="1.4" fill="#3d3558"/><circle cx="15.5" cy="15.5" r="1.4" fill="#3d3558"/></svg>';
+const CHEV = '<svg viewBox="0 0 24 24" fill="none" stroke="#3d3558" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"><path d="M15 5l-7 7 7 7"/></svg>';
+let myAv = randomAv();
+let localAvatars = [randomAv(), randomAv(), randomAv()];
+const renderHomeAv = () => {
+  $('homeav').innerHTML = avatarSvg(myAv);
+  document.querySelectorAll('#swatches .sw').forEach((b) => b.classList.toggle('sel', b.dataset.c === myAv[0]));
+  $('skinpick').value = myAv[0];
+  $('custom').classList.toggle('sel', !SKINS.includes(myAv[0]));
+};
+const setSkin = (c) => { myAv[0] = c.toLowerCase(); renderHomeAv(); };
+function cycleAv(part, d) { myAv[part] = (myAv[part] + d + AV_PARTS[part]) % AV_PARTS[part]; renderHomeAv(); }
+function randAv() { myAv = randomAv(); renderHomeAv(); }
+const svg = (size, body) => `<svg viewBox="0 0 64 64" width="${size}" height="${size}" fill="none" stroke="#3d3558" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${body}</svg>`;
+const ICON = {
+  fake: svg(64, '<circle cx="32" cy="32" r="25" fill="#fff"/><path d="M23 26c0-6 4-9 9-9s9 3 9 9c0 7-9 7-9 13"/><circle cx="32" cy="48" r="2.5" fill="#3d3558"/>'),
+  artist: svg(64, '<path d="M48 8l8 8-26 26-8-8z" fill="#ffd23f"/><path d="M22 34C12 36 12 46 7 56c12-2 22-4 23-14z" fill="#ff5fa2"/>'),
+  sound: svg(22, '<path d="M8 25h10l14-11v36L18 39H8z" fill="#3d3558"/><path d="M42 24c4 5 4 11 0 16M49 16c8 9 8 23 0 32"/>'),
+  muted: svg(22, '<path d="M8 25h10l14-11v36L18 39H8z" fill="#3d3558"/><path d="M42 24l14 16M56 24L42 40"/>'),
+};
+const $ = (id) => document.getElementById(id);
+function showHelp(on) { $('help').hidden = !on; }
+document.addEventListener('keydown', (e) => { if (e.key === 'Escape') showHelp(false); });
+const esc = (s) => String(s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+const clamp = (n, lo, hi) => Math.min(hi, Math.max(lo, n));
+const round1 = (n) => Math.round(n * 10) / 10;
+
+let ws, S = null;
+let strokes = [];
+let drawing = null;
+let myInk = 0;
+let inkTurn = -1;
+let usedTurn = -1;
+let deadline = null;
+let lastSec = null;
+let turnAnnounced = -1;
+let revealGame = -1;
+let revealStage = 0;
+let revealShown = 0;
+let guessRevealStarted = -1;
+let guessRevealDone = -1;
+const guessRevealing = () => S.phase === 'guess' && guessRevealDone !== S.gameNo;
+let revealTimers = [];
+let replayRaf = 0;
+let brush = 10;
+let conns = [];
+let active = 0;
+let local = false;
+let quick = false;
+let passedKey = null;
+let cardsDone = -1;
+let cardsBuilt = -1;
+let cardOpen = -1;
+let cardSeen = new Set();
+let pausedKey = null;
+let pauseTimer = 0;
+let syncTimer = 0;
+let joinQueue = [];
+let localNames = ['', '', ''];
+
+const cv = $('cv');
+const ctx = cv.getContext('2d');
+cv.width = W;
+cv.height = H;
+ctx.lineCap = 'round';
+ctx.lineJoin = 'round';
+
+let actx = null;
+let muted = false;
+function tone(freq, dur, type = 'square', vol = 0.06, delay = 0) {
+  if (muted) return;
+  actx ||= new AudioContext();
+  if (actx.state === 'suspended') actx.resume();
+  const t = actx.currentTime + delay;
+  const o = actx.createOscillator();
+  const g = actx.createGain();
+  o.type = type;
+  o.frequency.value = freq;
+  g.gain.setValueAtTime(vol, t);
+  g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+  o.connect(g).connect(actx.destination);
+  o.start(t);
+  o.stop(t + dur);
+}
+const sfx = {
+  tick: () => tone(1000, 0.05),
+  turn: () => { tone(523, 0.1); tone(784, 0.18, 'square', 0.06, 0.1); },
+  blip: () => tone(440, 0.08, 'triangle', 0.12),
+  drum: () => { for (let i = 0; i < 6; i++) tone(110, 0.08, 'sawtooth', 0.08, i * 0.15); },
+  win: () => [523, 659, 784, 1047].forEach((f, i) => tone(f, 0.18, 'square', 0.06, i * 0.12)),
+  lose: () => [392, 330, 262].forEach((f, i) => tone(f, 0.25, 'sawtooth', 0.05, i * 0.18)),
+};
+function copyCode() {
+  navigator.clipboard.writeText(S.code);
+  $('copy').textContent = 'Copied!';
+  setTimeout(() => { $('copy').textContent = 'Copy'; }, 1200);
+}
+function toggleMute() { muted = !muted; render(); }
+
+const send = (o) => ws && ws.readyState === 1 && ws.send(JSON.stringify(o));
+const setErr = (s) => { $('err').textContent = s; };
+
+const turnKey = () => `${S.gameNo}:${S.turnNo}`;
+const wsUrl = () => `${location.protocol === 'https:' ? 'wss' : 'ws'}://${location.host}`;
+
+function connect(first, name, avatar) {
+  const conn = { ws: new WebSocket(wsUrl()), S: null, deadline: null };
+  conn.ws.onopen = () => conn.ws.send(JSON.stringify({ ...first, name, avatar }));
+  conn.ws.onmessage = (e) => onMsg(conn, JSON.parse(e.data));
+  conn.ws.onclose = () => setErr('Disconnected. Refresh to rejoin.');
+  return conn;
+}
+
+function closeAll() {
+  clearTimeout(syncTimer);
+  clearTimeout(pauseTimer);
+  pauseTimer = 0;
+  cardsDone = cardsBuilt = -1;
+  pausedKey = passedKey = null;
+  conns.forEach((c) => { c.ws.onclose = null; c.ws.close(); });
+  conns = [];
+  S = null;
+  ws = null;
+  drawing = null;
+}
+
+function activate(i) {
+  active = i;
+  ws = conns[i].ws;
+  S = conns[i].S;
+  deadline = conns[i].deadline;
+}
+
+function open(first) {
+  const name = $('name').value.trim();
+  if (!name) return setErr('Enter a name');
+  setErr('');
+  closeAll();
+  local = false;
+  conns = [connect(first, name, myAv)];
+  activate(0);
+  tone(0.001, 0.001); // creates the AudioContext inside the click gesture so later sounds aren't blocked
+}
+const create = () => open({ t: 'create' });
+const join = () => open({ t: 'join', code: $('code').value.trim() });
+
+function onMsg(conn, m) {
+  if (m.t === 'error') {
+    setErr(m.msg);
+    if (local) { closeAll(); showLocal(); }
+    return;
+  }
+  if (m.t === 'stroke') {
+    if (conn === conns[active]) onRemoteStroke(m);
+    return;
+  }
+  if (m.t !== 'state') return;
+  conn.S = m;
+  conn.deadline = m.msLeft === null ? null : Date.now() + m.msLeft;
+  if (!local) {
+    activate(0);
+    return render();
+  }
+  if (joinQueue.length) {
+    joinQueue.forEach(([name, avatar]) => conns.push(connect({ t: 'join', code: m.code }, name, avatar)));
+    joinQueue = [];
+  }
+  // All local connections get the same broadcast; wait for the burst to land before picking who plays next.
+  clearTimeout(syncTimer);
+  syncTimer = setTimeout(syncLocal, 30);
+}
+
+function pickActive() {
+  const G = conns[0].S;
+  const wants = {
+    drawing: (c) => c.S.you === G.turnPlayer,
+    voting: (c) => !c.S.youVoted,
+    guess: (c) => c.S.isImposter,
+  }[G.phase];
+  return wants ? Math.max(0, conns.findIndex(wants)) : 0;
+}
+
+function syncLocal() {
+  if (conns.some((c) => !c.S) || conns[0].S.players.length < conns.length) return;
+  if (conns[0].S.phase === 'lobby' && conns[0].S.settings.timer) {
+    conns[0].ws.send(JSON.stringify({ t: 'settings', timer: 0 }));
+    return;
+  }
+  activate(pickActive());
+  render();
+}
+
+function showLocal() {
+  $('home').hidden = true;
+  $('local').hidden = false;
+  renderNames();
+}
+
+function renderNames() {
+  $('names').innerHTML = localNames.map((n, i) => `<div class="join">
+    <button class="alt av-btn" onclick="rerollLocal(${i})" title="Change avatar" aria-label="Change avatar"><span class="av">${avatarSvg(localAvatars[i])}</span></button>
+    <input id="n${i}" value="${esc(n)}" placeholder="Player ${i + 1}" maxlength="16">
+    ${i >= 3 ? `<button class="alt icon" onclick="removePlayer(${i})">✕</button>` : ''}</div>`).join('');
+  $('addp').disabled = localNames.length >= 8;
+}
+const readNames = () => { localNames = localNames.map((_, i) => $('n' + i).value.trim()); };
+function addPlayer() { readNames(); localNames.push(''); localAvatars.push(randomAv()); renderNames(); }
+function rerollLocal(i) { readNames(); localAvatars[i] = randomAv(); renderNames(); }
+function removePlayer(i) { readNames(); localNames.splice(i, 1); localAvatars.splice(i, 1); renderNames(); }
+
+function startLocal() {
+  readNames();
+  const names = localNames.map((n, i) => n || `Player ${i + 1}`);
+  setErr('');
+  closeAll();
+  local = true;
+  quick = $('quick').checked;
+  joinQueue = names.slice(1).map((n, i) => [n, localAvatars[i + 1]]);
+  conns = [connect({ t: 'create' }, names[0], localAvatars[0])];
+  activate(0);
+  tone(0.001, 0.001);
+}
+
+function leave() {
+  closeAll();
+  clearReveal();
+  setErr('');
+  $('room').hidden = true;
+  $('local').hidden = true;
+  $('home').hidden = false;
+}
+
+const gateKey = () => `${S.gameNo}:${S.phase}:${S.turnNo}:${active}`;
+function passGate() { passedKey = gateKey(); render(); }
+
+function localStage() {
+  if (!local || quick) return null;
+  if (S.phase === 'drawing') {
+    if (cardsDone !== S.gameNo) return 'cards';
+    return pausedKey === turnKey() ? null : 'pause';
+  }
+  if (S.phase === 'guess' && guessRevealing()) return null;
+  if (S.phase === 'voting' || S.phase === 'guess') return gateKey() === passedKey ? null : 'gate';
+  return null;
+}
+
+function renderPause() {
+  $('nextup').innerHTML = `<h2>Next up</h2><div class="big">${pchip(S.turnPlayer)}</div><p class="muted">Get ready...</p>`;
+  if (pauseTimer) return;
+  const key = turnKey();
+  pauseTimer = setTimeout(() => {
+    pauseTimer = 0;
+    pausedKey = key;
+    if (S) render();
+  }, 2000);
+}
+
+function renderCards() {
+  if (cardsBuilt === S.gameNo) return;
+  cardsBuilt = S.gameNo;
+  cardOpen = -1;
+  cardSeen = new Set();
+  const card = (c, i) => {
+    const you = c.S.players.find((p) => p.id === c.S.you);
+    const front = c.S.isImposter
+      ? `<div class="role">${ICON.fake}</div><b>FAKE ARTIST</b><small>Category</small><b>${esc(c.S.category)}</b><small>You don't know the word</small>`
+      : `<div class="role">${ICON.artist}</div><b>ARTIST</b><small>${esc(c.S.category)}</small><b class="word">${esc(c.S.word)}</b>`;
+    return `<div class="flipcard" onclick="flipCard(${i})"><div class="inner">
+      <div class="face back" style="--c:${you.color}">${av(you.avatar)}<span>${esc(you.name)}</span><i>✓</i></div>
+      <div class="face front ${c.S.isImposter ? 'fake' : ''}">${front}</div></div></div>`;
+  };
+  $('cards').innerHTML = `<h2>Find your card</h2>
+    <p class="muted">Tap your own card to see your role, then tap it again to hide it before passing the device.</p>
+    <div class="cardgrid" style="--h:${conns.length > 4 ? 230 : 280}px">${conns.map(card).join('')}</div>
+    <button id="cardsgo" class="start" onclick="cardsDone = S.gameNo; render()"></button>`;
+  updateCardsButton();
+}
+
+function updateCardsButton() {
+  const ready = cardSeen.size === conns.length;
+  $('cardsgo').disabled = !ready;
+  $('cardsgo').textContent = ready ? 'Start drawing' : `Waiting for everyone (${cardSeen.size}/${conns.length})`;
+}
+
+function flipCard(i) {
+  const els = document.querySelectorAll('.flipcard');
+  if (cardSeen.has(i) && cardOpen !== i) return;
+  const opening = cardOpen !== i;
+  els.forEach((el, j) => el.classList.toggle('open', opening && j === i));
+  cardOpen = opening ? i : -1;
+  if (opening) {
+    cardSeen.add(i);
+    els[i].classList.add('seen');
+  }
+  updateCardsButton();
+}
+
+function renderGate() {
+  const why = {
+    voting: 'Secret vote: who is the fake artist?',
+    guess: 'Time to make your guess.',
+  }[S.phase];
+  $('nextup').innerHTML = `<h2>Pass the device to</h2>
+    <div class="big">${pchip(S.you)}</div>
+    <p>${why} Everyone else, look away!</p>
+    <button class="start" onclick="passGate()">I'm ${esc(me().name)}, show me</button>`;
+}
+
+const me = () => S.players.find((p) => p.id === S.you);
+const pchip = (id) => {
+  const p = S.players.find((q) => q.id === id);
+  return `<span class="chip" style="--c:${p?.color ?? '#999'}">${av(p?.avatar)}${esc(p?.name ?? '?')}</span>`;
+};
+const myTurn = () => S && S.phase === 'drawing' && S.turnPlayer === S.you;
+const isBudget = () => S.settings.mode === 'budget';
+const isSingle = () => S.settings.mode === 'single';
+const MODE_NAMES = { budget: 'Ink budget', free: 'Free whiteboard', single: 'One stroke each' };
+const inkColor = (c) => (S.settings.colors || S.phase === 'result' ? c : '#3d3558');
+
+function render() {
+  $('home').hidden = true;
+  $('local').hidden = true;
+  $('room').hidden = false;
+  $('codestat').hidden = local;
+  $('top').classList.toggle('local', local);
+  $('roomcode').textContent = S.code;
+  $('plabel').textContent = `Players (${S.players.length}/8)`;
+  $('mute').innerHTML = muted ? ICON.muted : ICON.sound;
+  renderPlayers();
+  const inLobby = S.phase === 'lobby';
+  const stage = localStage();
+  $('cards').hidden = stage !== 'cards';
+  $('nextup').hidden = stage !== 'pause' && stage !== 'gate';
+  $('lobby').hidden = !inLobby;
+  $('game').hidden = inLobby || stage === 'cards';
+  $('game').classList.toggle('gated', stage === 'gate');
+  if (S.phase !== 'result' && S.phase !== 'guess') clearReveal();
+  if (stage === 'cards') renderCards();
+  else if (inLobby) renderLobby();
+  else renderGame();
+  if (stage === 'pause') renderPause();
+  else if (stage === 'gate') renderGate();
+}
+
+function renderPlayers() {
+  const ids = S.phase === 'lobby' ? S.players.map((p) => p.id) : S.order;
+  $('players').innerHTML = $('side').innerHTML = ids.map((id) => {
+    const p = S.players.find((q) => q.id === id);
+    const on = S.phase === 'drawing' && S.turnPlayer === id;
+    return `<span class="chip ${on ? 'on' : ''}" style="--c:${p.color}">${av(p.avatar)}${esc(p.name)}${id === S.hostId ? ' ★' : ''}${id === S.you && !local ? ' (you)' : ''}</span>`;
+  }).join('');
+}
+
+function doneVoteClick(yes) {
+  const voters = local ? conns : [conns[active]];
+  voters.forEach((c) => c.ws.send(JSON.stringify({ t: 'doneVote', yes })));
+}
+
+function setting(k, v) { send({ t: 'settings', [k]: k === 'mode' ? v : Number(v) }); }
+
+function renderLobby() {
+  const s = S.settings;
+  const host = S.you === S.hostId;
+  const opt = (val, label, cur) => `<option value="${val}" ${val == cur ? 'selected' : ''}>${label}</option>`;
+  let h = S.notice ? `<p class="note">${esc(S.notice)}</p>` : '';
+  if (host) {
+    h += `<div class="settings">
+      <label class="field wide">Mode <select onchange="setting('mode', this.value)">
+        ${opt('budget', 'Ink budget: limited ink per turn', s.mode)}
+        ${opt('free', 'Free whiteboard: draw freely, end your own turn', s.mode)}
+        ${opt('single', 'One stroke each: one stroke per turn, vote when done', s.mode)}
+      </select></label>
+      <label class="field">Stroke colors <select onchange="send({t:'settings', colors: this.value === 'on'})">
+        ${opt('on', 'Color per player', s.colors ? 'on' : 'off')}
+        ${opt('off', 'All black', s.colors ? 'on' : 'off')}
+      </select></label>
+      ${local ? '' : `<label class="field">Timer <select onchange="setting('timer', this.value)">
+        ${opt(0, 'Off', s.timer)}${opt(15, '15s turns', s.timer)}${opt(30, '30s turns', s.timer)}${opt(60, '60s turns', s.timer)}
+      </select></label>`}
+      ${s.mode === 'budget' ? `<label class="field">Ink per turn <select onchange="setting('budget', this.value)">
+        ${opt(400, 'Short', s.budget)}${opt(800, 'Medium', s.budget)}${opt(1500, 'Long', s.budget)}
+      </select></label>` : ''}
+      <label class="field">Rounds <select onchange="setting('rounds', this.value)">
+        ${[1, 2, 3, 4].map((n) => opt(n, n, s.rounds)).join('')}${opt(0, 'Until players vote to end', s.rounds)}
+      </select></label>
+    </div>
+    <button class="start" onclick="send({t:'start'})" ${S.players.length < 3 ? 'disabled' : ''}>Start game</button>`;
+  } else {
+    h += `<div class="pills">
+      <span class="pill">${MODE_NAMES[s.mode]}</span>
+      <span class="pill">${s.timer ? s.timer + 's turns' : 'No timer'}</span>
+      <span class="pill">${s.colors ? 'Color per player' : 'All black'}</span>
+      <span class="pill">${s.rounds ? `${s.rounds} round${s.rounds > 1 ? 's' : ''}` : 'Vote to end'}</span>
+    </div>
+    <p>Waiting for the host to start...</p>`;
+  }
+  if (S.players.length < 3 && !local) h += `<p class="muted">Need at least 3 players. Share room code <b>${S.code}</b>.</p>`;
+  $('lobby').innerHTML = h;
+}
+
+function renderGame() {
+  const banner = $('banner');
+  const hideSecrets = local && !quick && S.phase !== 'result';
+  const fake = !hideSecrets && S.isImposter && S.phase !== 'result';
+  banner.classList.toggle('fake', fake);
+  banner.innerHTML = hideSecrets
+    ? `Category: <b>${esc(S.category)}</b>`
+    : fake
+    ? `You are the <b>FAKE ARTIST</b>. Category: <b>${esc(S.category)}</b>.${S.phase === 'drawing' ? ' Blend in!' : ''}`
+    : `Category: <b>${esc(S.category)}</b> &middot; Word: <b>${esc(S.word)}</b>`;
+
+  if (drawing && !myTurn()) drawing = null;
+  strokes = S.strokes;
+  if (drawing) {
+    const i = strokes.findIndex((s) => s.sid === drawing.sid);
+    if (i < 0) strokes.push(drawing.stroke); else strokes[i] = drawing.stroke;
+  }
+  if (S.phase !== 'result' || revealGame === S.gameNo) redraw();
+  if (S.phase === 'result' && revealGame !== S.gameNo) runReveal();
+  if (S.phase === 'guess' && guessRevealStarted !== S.gameNo) runGuessReveal();
+
+  if (turnKey() !== inkTurn) {
+    inkTurn = turnKey();
+    myInk = S.inkLeft ?? 0;
+  }
+  if (myTurn() && turnAnnounced !== turnKey()) {
+    turnAnnounced = turnKey();
+    sfx.turn();
+  }
+  cv.classList.toggle('mine', myTurn());
+  $('stage').classList.toggle('small', S.phase !== 'drawing');
+  $('ink').hidden = !(isBudget() && S.phase === 'drawing');
+  updateInkBar();
+  $('brushes').hidden = S.phase !== 'drawing';
+  $('endbtn').hidden = !myTurn() || isSingle();
+  $('endbtn').textContent = isBudget() ? 'End turn early' : 'End turn';
+  $('finbtn').hidden = S.phase !== 'drawing' || S.settings.rounds > 0;
+  $('finbtn').textContent = `Finish drawing (${S.finishVotes}/${S.players.length})`;
+  $('finbtn').classList.toggle('sel', S.youFinishVoted);
+  updateBrushes();
+  refreshControls();
+}
+
+function setBrush(w) {
+  brush = w;
+  updateBrushes();
+}
+function updateBrushes() {
+  document.querySelectorAll('.brush').forEach((b) => b.classList.toggle('sel', Number(b.dataset.w) === brush));
+}
+
+function refreshControls() {
+  $('controls').classList.toggle('result', S.phase === 'result');
+  $('controls').innerHTML = controlsHtml();
+}
+
+function updateInkBar() {
+  if (!S || S.phase !== 'drawing' || !isBudget()) return;
+  const left = myTurn() ? myInk : S.inkLeft;
+  const tp = S.players.find((p) => p.id === S.turnPlayer);
+  $('inkfill').style.width = `${clamp(left / S.settings.budget, 0, 1) * 100}%`;
+  $('inkfill').style.background = inkColor(tp.color);
+}
+
+function controlsHtml() {
+  switch (S.phase) {
+    case 'drawing': {
+      const round = `<span class="muted">Round ${S.round}${S.settings.rounds ? ' of ' + S.settings.rounds : ''}</span>`;
+      if (!myTurn()) return `<div class="row">${pchip(S.turnPlayer)} is drawing... ${round}</div>`;
+      return isBudget()
+        ? `<div class="row"><span class="turn">Your turn! Draw until your ink runs out.</span>${round}</div>`
+        : isSingle()
+        ? `<div class="row"><span class="turn">Your turn! Draw <b>one stroke</b>, then lift.</span>${round}</div>`
+        : `<div class="row"><span class="turn">Your turn! Draw as much as you like, then end your turn.</span>${round}</div>`;
+    }
+    case 'doneVote':
+      return S.youDoneVoted
+        ? `<p>Waiting for votes (${S.doneVotes}/${S.players.length})...</p>`
+        : `<p class="turn">Everyone has drawn. Is the picture finished?</p>
+           <div class="row"><button onclick="doneVoteClick(true)">Yes, find the fake!</button>
+           <button class="alt" onclick="doneVoteClick(false)">No, one more round</button></div>
+           <p class="muted">${S.doneVotes}/${S.players.length} voted</p>`;
+    case 'voting':
+      return S.youVoted
+        ? `<p>Waiting for votes (${S.voteCount}/${S.players.length})...</p>`
+        : `<p class="turn">Who is the fake artist?</p><div class="row">${S.players.filter((p) => p.id !== S.you)
+            .map((p) => `<button class="vote" style="--c:${p.color}" onclick="send({t:'vote',target:'${p.id}'})">${av(p.avatar)}${esc(p.name)}</button>`).join('')}</div>`;
+    case 'guess':
+      if (guessRevealing()) return revealHtml(S.revealVotes, S.imposterId);
+      return S.isImposter
+        ? `<p class="turn">You were caught! Guess the word to steal the win.</p>
+           <div class="row"><input id="guess" placeholder="The word is..." maxlength="40"><button onclick="send({t:'guess',guess:$('guess').value})">Guess</button></div>`
+        : `<p>${pchip(S.imposterId)} is the fake artist. They are guessing the word...</p>`;
+    case 'result': return resultHtml();
+  }
+  return '';
+}
+
+function revealHtml(votes, imposterId) {
+  if (revealStage === 0) {
+    const lines = Object.entries(votes).slice(0, revealShown)
+      .map(([a, b]) => `<div class="vline">${pchip(a)} &#10142; ${pchip(b)}</div>`).join('');
+    return `<h2>And the fake artist is...</h2>${lines}`;
+  }
+  return `<h2>And the fake artist is...</h2><div class="big">${pchip(imposterId)}</div>`;
+}
+
+function resultHtml() {
+  const r = S.result;
+  if (revealStage < 2) return revealHtml(r.votes, r.imposterId);
+  const youWin = S.isImposter ? r.imposterWins : !r.imposterWins;
+  const why = !r.caught ? 'The fake artist was not caught.'
+    : r.imposterWins ? `Caught, but guessed "${esc(r.guess)}" correctly.`
+    : `Caught, and guessed "${esc(r.guess)}".`;
+  return `<h2 class="${local ? '' : youWin ? 'win' : 'lose'}">${r.imposterWins ? 'The fake artist wins!' : 'The artists win!'}</h2>
+    <p>${why} The word was <b>${esc(r.word)}</b>. Fake artist: ${pchip(r.imposterId)}</p>
+    <div class="row"><button class="alt" onclick="replay()">▶ Replay drawing</button>
+    ${S.you === S.hostId ? `<button onclick="send({t:'again'})">Play again</button>` : '<span class="muted">Waiting for the host...</span>'}</div>`;
+}
+
+function later(ms, fn) { revealTimers.push(setTimeout(fn, ms)); }
+
+function clearReveal() {
+  revealTimers.forEach(clearTimeout);
+  revealTimers = [];
+  cancelAnimationFrame(replayRaf);
+  revealGame = -1;
+  guessRevealStarted = -1;
+  guessRevealDone = -1;
+}
+
+function playVoteReveal(votes, onDone) {
+  revealStage = 0;
+  revealShown = 0;
+  sfx.drum();
+  const n = Object.keys(votes).length;
+  for (let i = 0; i < n; i++) later(900 + i * 700, () => { revealShown = i + 1; sfx.blip(); refreshControls(); });
+  const t1 = 900 + n * 700 + 900;
+  later(t1, () => { revealStage = 1; sfx.drum(); refreshControls(); });
+  later(t1 + 1800, onDone);
+}
+
+function showFinal() {
+  revealStage = 2;
+  (local || (S.isImposter ? S.result.imposterWins : !S.result.imposterWins)) ? sfx.win() : sfx.lose();
+  refreshControls();
+  replay();
+}
+
+function runReveal() {
+  revealGame = S.gameNo;
+  revealTimers.forEach(clearTimeout);
+  revealTimers = [];
+  redraw();
+  if (guessRevealDone === S.gameNo) return showFinal();
+  playVoteReveal(S.result.votes, showFinal);
+}
+
+// When the fake artist is caught, the reveal plays before their guess so nothing gives them away early.
+function runGuessReveal() {
+  guessRevealStarted = S.gameNo;
+  const game = S.gameNo;
+  playVoteReveal(S.revealVotes, () => { guessRevealDone = game; render(); });
+}
+
+function replay() {
+  cancelAnimationFrame(replayRaf);
+  const total = S.strokes.reduce((n, s) => n + s.pts.length, 0);
+  const per = Math.max(1, Math.ceil(total / 180));
+  let shown = 0;
+  const step = () => {
+    shown = Math.min(total, shown + per);
+    ctx.clearRect(0, 0, W, H);
+    let left = shown;
+    for (const s of S.strokes) {
+      drawStroke(s, Math.min(s.pts.length, left));
+      left -= s.pts.length;
+      if (left <= 0) break;
+    }
+    if (shown < total) replayRaf = requestAnimationFrame(step);
+  };
+  step();
+}
+
+const rnd = (n) => { const x = Math.sin(n * 127.1) * 43758.5453; return x - Math.floor(x); };
+const hash = (str) => [...str].reduce((h, c) => (h * 31 + c.charCodeAt(0)) % 100003, 7);
+
+// Wobble is seeded by stroke id so every client (and the replay) draws the identical sketchy line.
+function drawStroke(s, n = s.pts.length) {
+  if (n < 1) return;
+  const seed = hash(s.sid);
+  const w = s.w || 10;
+  ctx.strokeStyle = ctx.fillStyle = inkColor(s.color);
+  const pass = (ox, oy, lw, alpha, amp, salt) => {
+    const q = s.pts.slice(0, n).map((p, i) => [
+      p[0] + ox + (rnd(seed + i * 2 + salt) - 0.5) * amp,
+      p[1] + oy + (rnd(seed + i * 2 + 1 + salt) - 0.5) * amp,
+    ]);
+    ctx.globalAlpha = alpha;
+    ctx.lineWidth = lw;
+    ctx.beginPath();
+    if (q.length === 1) {
+      ctx.arc(q[0][0], q[0][1], lw / 2, 0, Math.PI * 2);
+      ctx.fill();
+      return;
+    }
+    ctx.moveTo(...q[0]);
+    for (let i = 1; i < q.length - 1; i++) {
+      ctx.quadraticCurveTo(q[i][0], q[i][1], (q[i][0] + q[i + 1][0]) / 2, (q[i][1] + q[i + 1][1]) / 2);
+    }
+    ctx.lineTo(...q[q.length - 1]);
+    ctx.stroke();
+  };
+  pass(0, 0, w, 1, 0.6 + w * 0.12, 0);
+  pass(rnd(seed) * 3 - 1.5, rnd(seed + 1) * 3 - 1.5, Math.max(1.5, w * 0.5), 0.35, 1 + w * 0.1, 99);
+  ctx.globalAlpha = 1;
+}
+
+function redraw() {
+  ctx.clearRect(0, 0, W, H);
+  strokes.forEach((s) => drawStroke(s));
+}
+
+let redrawRaf = 0;
+function scheduleRedraw() {
+  if (redrawRaf) return;
+  redrawRaf = requestAnimationFrame(() => { redrawRaf = 0; redraw(); });
+}
+
+function onRemoteStroke(m) {
+  let st = strokes.find((s) => s.sid === m.sid);
+  if (!st) {
+    st = { sid: m.sid, pid: m.pid, color: m.color, w: m.w, pts: [] };
+    strokes.push(st);
+  }
+  st.pts.push(...m.pts);
+  scheduleRedraw();
+}
+
+function pos(e) {
+  const r = cv.getBoundingClientRect();
+  return [clamp(((e.clientX - r.left) * W) / r.width, 0, W), clamp(((e.clientY - r.top) * H) / r.height, 0, H)];
+}
+
+// Mirrors the server's ink arithmetic in onStroke so both sides agree when ink hits zero.
+function addPoint(raw) {
+  const st = drawing.stroke;
+  const last = st.pts[st.pts.length - 1];
+  let p = [round1(raw[0]), round1(raw[1])];
+  let spent = false;
+  if (last) {
+    const d = Math.hypot(p[0] - last[0], p[1] - last[1]);
+    if (d < 1) return;
+    if (isBudget()) {
+      if (d >= myInk) {
+        const f = myInk / d;
+        p = [round1(last[0] + (p[0] - last[0]) * f), round1(last[1] + (p[1] - last[1]) * f)];
+        myInk = 0;
+      } else {
+        myInk -= d;
+        if (myInk < 0.5) myInk = 0;
+      }
+      spent = myInk === 0;
+    }
+  }
+  st.pts.push(p);
+  drawing.pending.push(p);
+  scheduleRedraw();
+  updateInkBar();
+  if (spent) finishStroke();
+}
+
+function flush(end) {
+  if (!drawing || (!drawing.pending.length && !end)) return;
+  send({ t: 'stroke', sid: drawing.sid, w: drawing.stroke.w, pts: drawing.pending, end });
+  drawing.pending = [];
+}
+
+function finishStroke() {
+  flush(true);
+  drawing = null;
+  if (isSingle()) usedTurn = turnKey();
+}
+
+cv.addEventListener('pointerdown', (e) => {
+  if (!myTurn() || drawing) return;
+  if (isBudget() ? myInk <= 0 : isSingle() && usedTurn === turnKey()) return;
+  cv.setPointerCapture(e.pointerId);
+  const stroke = { sid: Math.random().toString(36).slice(2, 10), pid: S.you, color: me().color, w: brush, pts: [] };
+  strokes.push(stroke);
+  drawing = { sid: stroke.sid, stroke, pending: [] };
+  addPoint(pos(e));
+});
+cv.addEventListener('pointermove', (e) => { if (drawing) addPoint(pos(e)); });
+const up = () => { if (drawing) finishStroke(); };
+cv.addEventListener('pointerup', up);
+cv.addEventListener('pointercancel', up);
+
+$('dicebtn').innerHTML = DICE;
+$('swatches').innerHTML = SKINS.map((c) => `<button class="sw" data-c="${c}" style="background:${c}" onclick="setSkin('${c}')" aria-label="Color ${c}"></button>`).join('') +
+  '<label class="sw custom" id="custom" title="Custom color"><input type="color" id="skinpick" oninput="setSkin(this.value)" aria-label="Custom color"></label>';
+$('arrL').innerHTML = [3, 1, 2].map((r) => `<button class="arrow" onclick="cycleAv(${r}, -1)" aria-label="Previous">${CHEV}</button>`).join('');
+$('arrR').innerHTML = [3, 1, 2].map((r) => `<button class="arrow flip" onclick="cycleAv(${r}, 1)" aria-label="Next">${CHEV}</button>`).join('');
+renderHomeAv();
+
+setInterval(() => flush(false), 40);
+
+setInterval(() => {
+  const t = $('timer');
+  if (!S || deadline === null || S.phase === 'lobby' || S.phase === 'result' || guessRevealing()) {
+    t.hidden = true;
+    lastSec = null;
+    return;
+  }
+  const sec = Math.max(0, Math.ceil((deadline - Date.now()) / 1000));
+  t.hidden = false;
+  t.textContent = sec;
+  t.classList.toggle('hot', sec <= 5);
+  const mine = myTurn() || (S.phase === 'voting' && !S.youVoted) || (S.phase === 'doneVote' && !S.youDoneVoted) || (S.phase === 'guess' && S.isImposter);
+  if (mine && sec > 0 && sec <= 5 && sec !== lastSec) sfx.tick();
+  lastSec = sec;
+}, 200);
+</script>
+</body>
+</html>

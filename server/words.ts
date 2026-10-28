@@ -1,4 +1,4 @@
-export default {
+const WORDS: Record<string, string[]> = {
   Animals: ['penguin', 'giraffe', 'octopus', 'kangaroo', 'elephant', 'butterfly', 'shark', 'owl', 'snail', 'crab'],
   Food: ['pizza', 'banana', 'hamburger', 'ice cream', 'sushi', 'taco', 'pineapple', 'donut', 'popcorn', 'cupcake'],
   Transport: ['bicycle', 'airplane', 'submarine', 'helicopter', 'train', 'rocket', 'sailboat', 'tractor', 'skateboard', 'bus'],
@@ -8,3 +8,5 @@ export default {
   Sports: ['basketball', 'bowling', 'archery', 'surfing', 'skiing', 'boxing', 'golf', 'tennis', 'soccer', 'fishing'],
   Fantasy: ['dragon', 'wizard', 'unicorn', 'mermaid', 'ghost', 'robot', 'pirate', 'vampire', 'alien', 'knight'],
 };
+
+export default WORDS;

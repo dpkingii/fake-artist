@@ -38,3 +38,20 @@ PORT=3000 npm start
 ```
 
 The server serves the built client and the `/ws` socket from one port.
+
+## Docker
+
+```sh
+docker build -t fake-artist .
+docker run -p 3000:3000 fake-artist
+```
+
+## Deploy on Render
+
+Rooms live in server memory, so run a single instance. The free tier sleeps after ~15 minutes idle and drops any open rooms.
+
+1. In Render, choose **New > Blueprint** and select this repo. It reads `render.yaml` and builds the `Dockerfile`.
+2. Render injects `PORT`, and `/healthz` is used as the health check.
+3. Every push to `main` redeploys.
+
+CI (`.github/workflows/ci.yml`) runs typecheck, tests, the build, and a Docker build on pushes to `main` and on PRs.

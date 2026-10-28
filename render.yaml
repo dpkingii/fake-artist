@@ -1,0 +1,6 @@
+services:
+  - type: web
+    name: fake-artist
+    runtime: docker
+    plan: free
+    healthCheckPath: /healthz

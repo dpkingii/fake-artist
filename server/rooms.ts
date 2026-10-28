@@ -1,111 +1,152 @@
-import http from 'node:http';
-import fs from 'node:fs';
-import path from 'node:path';
 import crypto from 'node:crypto';
-import { fileURLToPath } from 'node:url';
-import { WebSocketServer } from 'ws';
+import type { WebSocket } from 'ws';
 import WORDS from './words.js';
+import {
+  AVATAR_PARTS,
+  H,
+  MAX_PLAYERS,
+  MIN_PLAYERS,
+  PEN_COLORS,
+  SKINS,
+  TIMER_CHOICES,
+  W,
+  clamp,
+  round1,
+  type Avatar,
+  type ClientMsg,
+  type EnterMsg,
+  type GameResult,
+  type GameView,
+  type Phase,
+  type ServerMsg,
+  type Settings,
+  type StateView,
+  type StrokeData,
+  type StrokeRelay,
+} from '../shared/protocol.js';
 
-const dir = path.dirname(fileURLToPath(import.meta.url));
-const PORT = process.env.PORT || 3000;
-const W = 800;
-const H = 600;
-const MIN_PLAYERS = 3;
-const MAX_PLAYERS = 8;
-const TIMER_CHOICES = [0, 15, 30, 60];
 const DONE_SECS = 20;
 const VOTE_SECS = 30;
 const GUESS_SECS = 30;
-const COLORS = ['#d8607a', '#5fae6e', '#6a82cc', '#e09a5c', '#9a69b3', '#4f9a9a', '#a08060', '#cf7fc0'];
 
-const rooms = new Map();
+interface Player {
+  id: string;
+  name: string;
+  avatar: Avatar;
+  color: string;
+  ws: Sock;
+}
 
-const server = http.createServer((req, res) => {
-  const { pathname } = new URL(req.url, 'http://x');
-  if (pathname !== '/' && pathname !== '/index.html') {
-    res.writeHead(404);
-    return res.end();
-  }
-  res.writeHead(200, { 'content-type': 'text/html; charset=utf-8' });
-  fs.createReadStream(path.join(dir, 'public', 'index.html')).pipe(res);
-});
+interface LiveStroke extends StrokeData {
+  ended: boolean;
+}
 
-const wss = new WebSocketServer({ server });
+interface Room {
+  code: string;
+  hostId: string;
+  players: Player[];
+  settings: Settings;
+  gameNo: number;
+  phase: Phase;
+  notice: string | null;
+  timer: NodeJS.Timeout | null;
+  deadline: number | null;
+  category: string;
+  word: string;
+  imposterId: string;
+  order: string[];
+  turnIdx: number;
+  round: number;
+  turnNo: number;
+  strokes: LiveStroke[];
+  doneVotes: Record<string, boolean>;
+  finishVotes: Set<string>;
+  votes: Record<string, string>;
+  result: GameResult | null;
+  inkLeft: number | null;
+  strokesThisTurn: number;
+  cur: LiveStroke | null;
+}
 
-const pick = (arr) => arr[Math.floor(Math.random() * arr.length)];
-const clamp = (n, lo, hi) => Math.min(hi, Math.max(lo, n));
-const round1 = (n) => Math.round(n * 10) / 10;
-const norm = (s) => String(s ?? '').trim().toLowerCase();
+type Sock = WebSocket & { room?: Room; player?: Player };
 
-function shuffle(arr) {
+const rooms = new Map<string, Room>();
+
+const pick = <T>(arr: T[]): T => arr[Math.floor(Math.random() * arr.length)]!;
+const norm = (s: unknown) => String(s ?? '').trim().toLowerCase();
+
+function shuffle<T>(arr: T[]): T[] {
   const a = [...arr];
   for (let i = a.length - 1; i > 0; i--) {
     const j = Math.floor(Math.random() * (i + 1));
-    [a[i], a[j]] = [a[j], a[i]];
+    [a[i], a[j]] = [a[j]!, a[i]!];
   }
   return a;
 }
 
 function makeCode() {
-  let code;
+  let code: string;
   do {
     code = Array.from({ length: 4 }, () => String.fromCharCode(65 + Math.floor(Math.random() * 26))).join('');
   } while (rooms.has(code));
   return code;
 }
 
-function send(ws, obj) {
+function send(ws: Sock, obj: ServerMsg) {
   if (ws.readyState === 1) ws.send(JSON.stringify(obj));
 }
 
-function viewFor(room, p) {
-  const v = {
-    t: 'state',
+function viewFor(room: Room, p: Player): StateView {
+  const base = {
+    t: 'state' as const,
     code: room.code,
     you: p.id,
     hostId: room.hostId,
     players: room.players.map(({ id, name, color, avatar }) => ({ id, name, color, avatar })),
     settings: room.settings,
-    phase: room.phase,
     notice: room.notice,
     gameNo: room.gameNo,
     msLeft: room.deadline ? Math.max(0, room.deadline - Date.now()) : null,
   };
-  if (room.phase === 'lobby') return v;
+  if (room.phase === 'lobby') return { ...base, phase: 'lobby' };
 
   const isImposter = p.id === room.imposterId;
-  v.category = room.category;
-  v.isImposter = isImposter;
-  v.word = isImposter && room.phase !== 'result' ? null : room.word;
-  v.imposterId = room.phase === 'guess' ? room.imposterId : null;
-  v.revealVotes = room.phase === 'guess' ? { ...room.votes } : null;
-  v.order = room.order;
-  v.turnPlayer = room.phase === 'drawing' ? room.order[room.turnIdx] : null;
-  v.turnNo = room.turnNo;
-  v.round = room.round;
-  v.inkLeft = room.inkLeft;
-  v.strokes = room.strokes.map(({ sid, pid, color, w, pts }) => ({ sid, pid, color, w, pts }));
-  v.finishVotes = room.finishVotes.size;
-  v.youFinishVoted = room.finishVotes.has(p.id);
-  v.doneVotes = Object.keys(room.doneVotes).length;
-  v.youDoneVoted = p.id in room.doneVotes;
-  v.voteCount = Object.keys(room.votes).length;
-  v.youVoted = p.id in room.votes;
-  v.result = room.result;
-  return v;
+  const view: GameView = {
+    ...base,
+    phase: room.phase,
+    category: room.category,
+    isImposter,
+    word: isImposter && room.phase !== 'result' ? null : room.word,
+    imposterId: room.phase === 'guess' ? room.imposterId : null,
+    revealVotes: room.phase === 'guess' ? { ...room.votes } : null,
+    order: room.order,
+    turnPlayer: room.phase === 'drawing' ? room.order[room.turnIdx]! : null,
+    turnNo: room.turnNo,
+    round: room.round,
+    inkLeft: room.inkLeft,
+    strokes: room.strokes.map(({ sid, pid, color, w, pts }) => ({ sid, pid, color, w, pts })),
+    finishVotes: room.finishVotes.size,
+    youFinishVoted: room.finishVotes.has(p.id),
+    doneVotes: Object.keys(room.doneVotes).length,
+    youDoneVoted: p.id in room.doneVotes,
+    voteCount: Object.keys(room.votes).length,
+    youVoted: p.id in room.votes,
+    result: room.result,
+  };
+  return view;
 }
 
-function broadcast(room, except = null) {
-  for (const p of room.players) if (p !== except) send(p.ws, viewFor(room, p));
+function broadcast(room: Room) {
+  for (const p of room.players) send(p.ws, viewFor(room, p));
 }
 
-function clearTimer(room) {
-  clearTimeout(room.timer);
+function clearTimer(room: Room) {
+  if (room.timer) clearTimeout(room.timer);
   room.timer = null;
   room.deadline = null;
 }
 
-function schedule(room, secs, onExpire) {
+function schedule(room: Room, secs: number, onExpire: () => void) {
   clearTimer(room);
   if (!room.settings.timer) return;
   room.deadline = Date.now() + secs * 1000;
@@ -117,16 +158,16 @@ function schedule(room, secs, onExpire) {
   }, secs * 1000);
 }
 
-function resetToLobby(room) {
+function resetToLobby(room: Room) {
   clearTimer(room);
   room.phase = 'lobby';
   room.notice = null;
 }
 
-function startGame(room) {
+function startGame(room: Room) {
   room.gameNo++;
   room.category = pick(Object.keys(WORDS));
-  room.word = pick(WORDS[room.category]);
+  room.word = pick(WORDS[room.category]!);
   room.imposterId = pick(room.players).id;
   room.order = shuffle(room.players.map((p) => p.id));
   room.turnIdx = 0;
@@ -142,7 +183,7 @@ function startGame(room) {
   beginTurn(room);
 }
 
-function beginTurn(room) {
+function beginTurn(room: Room) {
   room.turnNo++;
   room.inkLeft = room.settings.mode === 'budget' ? room.settings.budget : null;
   room.strokesThisTurn = 0;
@@ -150,13 +191,13 @@ function beginTurn(room) {
   schedule(room, room.settings.timer, () => endTurn(room));
 }
 
-function toVoting(room) {
+function toVoting(room: Room) {
   room.phase = 'voting';
   room.votes = {};
   schedule(room, VOTE_SECS, () => resolveVotes(room));
 }
 
-function endTurn(room) {
+function endTurn(room: Room) {
   room.cur = null;
   room.turnIdx++;
   if (room.turnIdx >= room.order.length) {
@@ -176,7 +217,7 @@ function endTurn(room) {
 }
 
 // Client and server run this same arithmetic on the same rounded points so they agree on exactly when ink runs out.
-function onStroke(room, p, m) {
+function onStroke(room: Room, p: Player, m: Extract<ClientMsg, { t: 'stroke' }>) {
   if (room.phase !== 'drawing' || room.order[room.turnIdx] !== p.id) return;
   if (typeof m.sid !== 'string' || m.sid.length > 16 || !Array.isArray(m.pts) || m.pts.length > 200) return;
 
@@ -189,7 +230,7 @@ function onStroke(room, p, m) {
     room.strokesThisTurn++;
   }
 
-  const accepted = [];
+  const accepted: StrokeData['pts'] = [];
   let spent = false;
   for (const pt of m.pts) {
     if (!Array.isArray(pt)) continue;
@@ -224,11 +265,11 @@ function onStroke(room, p, m) {
   broadcast(room);
 }
 
-function broadcastStroke(room, from, msg) {
+function broadcastStroke(room: Room, from: Player, msg: StrokeRelay) {
   for (const q of room.players) if (q !== from) send(q.ws, msg);
 }
 
-function resolveDoneVote(room) {
+function resolveDoneVote(room: Room) {
   const yes = Object.values(room.doneVotes).filter(Boolean).length;
   if (yes > room.players.length / 2) return toVoting(room);
   room.round++;
@@ -237,7 +278,7 @@ function resolveDoneVote(room) {
   beginTurn(room);
 }
 
-function finish(room, caught, imposterWins, guess) {
+function finish(room: Room, caught: boolean, imposterWins: boolean, guess: string | null) {
   clearTimer(room);
   room.phase = 'result';
   room.result = {
@@ -250,8 +291,8 @@ function finish(room, caught, imposterWins, guess) {
   };
 }
 
-function resolveVotes(room) {
-  const tally = {};
+function resolveVotes(room: Room) {
+  const tally: Record<string, number> = {};
   for (const target of Object.values(room.votes)) tally[target] = (tally[target] || 0) + 1;
   const max = Math.max(...Object.values(tally));
   const top = Object.keys(tally).filter((id) => tally[id] === max);
@@ -261,33 +302,52 @@ function resolveVotes(room) {
   } else finish(room, false, true, null);
 }
 
-const AVATAR_PARTS = [6, 6, 5];
-const SKIN_DEFAULTS = ['#f28b82', '#f6b26b', '#f3d77a', '#9bd77f', '#7ed3ac', '#7fb8ec', '#b3a1ee', '#f29bd6'];
-const cleanAvatar = (a) => [
-  /^#[0-9a-f]{6}$/i.test(a?.[0]) ? a[0] : SKIN_DEFAULTS[Math.floor(Math.random() * SKIN_DEFAULTS.length)],
-  ...AVATAR_PARTS.map((n, i) => (Number.isInteger(a?.[i + 1]) && a[i + 1] >= 0 && a[i + 1] < n ? a[i + 1] : Math.floor(Math.random() * n))),
+const cleanAvatar = (a: Avatar | undefined): Avatar => [
+  /^#[0-9a-f]{6}$/i.test(a?.[0] as string) ? a![0] : pick(SKINS),
+  ...(AVATAR_PARTS.map((n, i) => {
+    const v = a?.[i + 1] as number;
+    return Number.isInteger(v) && v >= 0 && v < n ? v : Math.floor(Math.random() * n);
+  }) as [number, number, number]),
 ];
 
-function enter(ws, m) {
+function enter(ws: Sock, m: EnterMsg) {
   if (ws.room) return;
   const name = String(m.name ?? '').trim().slice(0, 16);
   if (!name) return send(ws, { t: 'error', msg: 'Enter a name' });
 
-  let room;
+  let room: Room;
   if (m.t === 'create') {
     room = {
       code: makeCode(),
-      hostId: null,
+      hostId: '',
       players: [],
       settings: { mode: 'budget', budget: 800, rounds: 2, colors: true, timer: 30 },
       gameNo: 0,
       phase: 'lobby',
       notice: null,
+      timer: null,
+      deadline: null,
+      category: '',
+      word: '',
+      imposterId: '',
+      order: [],
+      turnIdx: 0,
+      round: 1,
+      turnNo: 0,
+      strokes: [],
+      doneVotes: {},
+      finishVotes: new Set(),
+      votes: {},
+      result: null,
+      inkLeft: null,
+      strokesThisTurn: 0,
+      cur: null,
     };
     rooms.set(room.code, room);
   } else {
-    room = rooms.get(String(m.code ?? '').trim().toUpperCase());
-    if (!room) return send(ws, { t: 'error', msg: 'Room not found' });
+    const found = rooms.get(String(m.code ?? '').trim().toUpperCase());
+    if (!found) return send(ws, { t: 'error', msg: 'Room not found' });
+    room = found;
     if (room.phase !== 'lobby') return send(ws, { t: 'error', msg: 'Game already started' });
     if (room.players.length >= MAX_PLAYERS) return send(ws, { t: 'error', msg: 'Room is full' });
     if (room.players.some((q) => q.name.toLowerCase() === name.toLowerCase())) {
@@ -295,11 +355,18 @@ function enter(ws, m) {
     }
   }
 
-  const p = {
+  let color = PEN_COLORS.find((c) => !room.players.some((q) => q.color === c))!;
+  if (/^#[0-9a-f]{6}$/i.test(m.color as string)) {
+    const want = m.color!.toLowerCase();
+    if (room.players.some((q) => q.color === want)) return send(ws, { t: 'error', msg: 'Pen color already taken' });
+    color = want;
+  }
+
+  const p: Player = {
     id: crypto.randomUUID().slice(0, 8),
     name,
     avatar: cleanAvatar(m.avatar),
-    color: COLORS.find((c) => !room.players.some((q) => q.color === c)),
+    color,
     ws,
   };
   room.players.push(p);
@@ -309,17 +376,17 @@ function enter(ws, m) {
   broadcast(room);
 }
 
-function leave(ws) {
+function leave(ws: Sock) {
   const room = ws.room;
-  if (!room) return;
   const p = ws.player;
+  if (!room || !p) return;
   room.players = room.players.filter((q) => q !== p);
   if (!room.players.length) {
     clearTimer(room);
     rooms.delete(room.code);
     return;
   }
-  if (room.hostId === p.id) room.hostId = room.players[0].id;
+  if (room.hostId === p.id) room.hostId = room.players[0]!.id;
   if (room.phase !== 'lobby') {
     resetToLobby(room);
     room.notice = `${p.name} left, so the game was reset.`;
@@ -327,22 +394,22 @@ function leave(ws) {
   broadcast(room);
 }
 
-function handle(ws, m) {
+function handle(ws: Sock, m: ClientMsg) {
   if (m.t === 'create' || m.t === 'join') return enter(ws, m);
   const room = ws.room;
   const p = ws.player;
-  if (!room) return;
+  if (!room || !p) return;
   const isHost = room.hostId === p.id;
 
   switch (m.t) {
     case 'settings': {
       if (!isHost || room.phase !== 'lobby') return;
       const s = room.settings;
-      if (['budget', 'free', 'single'].includes(m.mode)) s.mode = m.mode;
+      if (m.mode && ['budget', 'free', 'single'].includes(m.mode)) s.mode = m.mode;
       if (typeof m.colors === 'boolean') s.colors = m.colors;
-      if (TIMER_CHOICES.includes(m.timer)) s.timer = m.timer;
-      if (Number.isFinite(m.budget)) s.budget = clamp(Math.round(m.budget), 50, 2000);
-      if (Number.isFinite(m.rounds)) s.rounds = clamp(Math.round(m.rounds), 0, 5);
+      if (m.timer !== undefined && TIMER_CHOICES.includes(m.timer)) s.timer = m.timer;
+      if (Number.isFinite(m.budget)) s.budget = clamp(Math.round(m.budget!), 50, 2000);
+      if (Number.isFinite(m.rounds)) s.rounds = clamp(Math.round(m.rounds!), 0, 5);
       return broadcast(room);
     }
     case 'start':
@@ -385,17 +452,16 @@ function handle(ws, m) {
   }
 }
 
-wss.on('connection', (ws) => {
-  ws.on('message', (raw) => {
-    let m;
+export function onConnection(ws: WebSocket) {
+  const sock = ws as Sock;
+  sock.on('message', (raw) => {
+    let m: ClientMsg;
     try {
-      m = JSON.parse(raw);
+      m = JSON.parse(String(raw));
     } catch {
       return;
     }
-    if (m && typeof m.t === 'string') handle(ws, m);
+    if (m && typeof m.t === 'string') handle(sock, m);
   });
-  ws.on('close', () => leave(ws));
-});
-
-server.listen(PORT, () => console.log(`Fake Artist on http://localhost:${PORT}`));
+  sock.on('close', () => leave(sock));
+}

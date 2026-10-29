@@ -21,6 +21,10 @@ const TYPES: Record<string, string> = {
 
 function serveStatic(req: http.IncomingMessage, res: http.ServerResponse) {
   const { pathname } = new URL(req.url ?? '/', 'http://x');
+  if (pathname === '/healthz') {
+    res.writeHead(200, { 'content-type': 'text/plain' });
+    return res.end('ok');
+  }
   const rel = pathname === '/' ? 'index.html' : decodeURIComponent(pathname).replace(/^\/+/, '');
   const file = path.resolve(CLIENT_DIR, rel);
   if (!file.startsWith(CLIENT_DIR + path.sep) || !fs.existsSync(file) || !fs.statSync(file).isFile()) {

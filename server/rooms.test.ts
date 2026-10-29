@@ -61,6 +61,13 @@ async function room(settings: Partial<Settings> = {}, start = true) {
   return { cs, a, b, c, turn, close };
 }
 
+describe('http', () => {
+  it('answers the health check', async () => {
+    const res = await fetch(`http://localhost:${srv.port}/healthz`);
+    expect(res.status).toBe(200);
+  });
+});
+
 describe('lobby', () => {
   it('rejects duplicate names, unknown rooms, and clamps avatars', async () => {
     const { a, b, close } = await room({}, false);

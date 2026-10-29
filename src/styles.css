@@ -49,7 +49,7 @@ button.icon { padding: 4px 10px; box-shadow: 0 3px 0 var(--ink); }
 .stat { display: flex; flex-direction: column; align-items: flex-start; gap: 4px; }
 .stat small { font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: .08em; opacity: .6; }
 #top.local .stat.grow { border-left: 0; padding-left: 0; }
-.stat.grow { flex: 1; min-width: 0; border-left: 3px solid #e6e3ee; padding-left: 14px; }
+.stat.grow { flex: 1 1 200px; min-width: 0; border-left: 3px solid #e6e3ee; padding-left: 14px; }
 .settings { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 14px; }
 .field { display: flex; flex-direction: column; gap: 4px; font-weight: 600; font-size: 14px; }
 .field select { width: 100%; font-weight: 400; font-size: 16px; }

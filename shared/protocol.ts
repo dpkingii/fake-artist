@@ -110,6 +110,7 @@ export type EnterMsg = { t: 'create' | 'join'; name?: string; avatar?: Avatar; c
 export type ClientMsg =
   | EnterMsg
   | ({ t: 'settings' } & Partial<Settings>)
+  | { t: 'color'; color: string }
   | { t: 'start' }
   | { t: 'stroke'; sid: string; w?: number; pts: Pt[]; end: boolean }
   | { t: 'endTurn' }

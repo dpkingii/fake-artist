@@ -108,6 +108,19 @@ describe('lobby', () => {
     close();
   });
 
+  it('lets players change their pen color in the lobby but not onto one that is taken', async () => {
+    const { a, b, close } = await room({}, false);
+    b.send({ t: 'color', color: '#AABBCC' });
+    await until(() => a.S.players.find((p) => p.name === 'bob')!.color === '#aabbcc', 'color change');
+    a.send({ t: 'color', color: '#aabbcc' });
+    await until(() => a.errors.length > 0, 'error');
+    expect(a.errors[0]).toBe('Pen color already taken');
+    a.send({ t: 'color', color: 'red' });
+    await sleep(50);
+    expect(a.S.players.find((p) => p.name === 'ann')!.color).not.toBe('red');
+    close();
+  });
+
   it('only the host can change settings', async () => {
     const { a, b, close } = await room({ rounds: 3 }, false);
     b.send({ t: 'settings', rounds: 1 });

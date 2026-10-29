@@ -412,6 +412,13 @@ function handle(ws: Sock, m: ClientMsg) {
       if (Number.isFinite(m.rounds)) s.rounds = clamp(Math.round(m.rounds!), 0, 5);
       return broadcast(room);
     }
+    case 'color': {
+      const want = String(m.color).toLowerCase();
+      if (room.phase !== 'lobby' || !/^#[0-9a-f]{6}$/.test(want)) return;
+      if (room.players.some((q) => q !== p && q.color === want)) return send(ws, { t: 'error', msg: 'Pen color already taken' });
+      p.color = want;
+      return broadcast(room);
+    }
     case 'start':
       if (!isHost || room.phase !== 'lobby' || room.players.length < MIN_PLAYERS) return;
       startGame(room);

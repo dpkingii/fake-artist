@@ -1,12 +1,32 @@
 import type { ReactNode } from 'react';
 import { net } from '../net';
-import type { LobbyView, Mode } from '../../shared/protocol';
+import { PEN_COLORS, type LobbyView, type Mode } from '../../shared/protocol';
 
 const MODE_NAMES: Record<Mode, string> = { budget: 'Ink budget', free: 'Free whiteboard', single: 'One stroke each' };
 
 const Field = ({ label, wide, children }: { label: string; wide?: boolean; children: ReactNode }) => (
   <label className={`field${wide ? ' wide' : ''}`}>{label} {children}</label>
 );
+
+function PenColor({ S }: { S: LobbyView }) {
+  const mine = S.players.find((p) => p.id === S.you)!.color;
+  const taken = (c: string) => S.players.some((p) => p.id !== S.you && p.color === c);
+  const pick = (color: string) => {
+    net.clearError();
+    net.send({ t: 'color', color });
+  };
+  return (
+    <div className="penrow">
+      <span>Your pen color</span>
+      {PEN_COLORS.map((c) => (
+        <button key={c} className={`sw${mine === c ? ' sel' : ''}`} style={{ background: c }} disabled={taken(c)} onClick={() => pick(c)} aria-label={`Pen color ${c}`} />
+      ))}
+      <label className={`sw custom${PEN_COLORS.includes(mine) ? '' : ' sel'}`} title="Custom color">
+        <input type="color" value={mine} onChange={(e) => pick(e.target.value)} aria-label="Custom pen color" />
+      </label>
+    </div>
+  );
+}
 
 export function Lobby({ S, local }: { S: LobbyView; local: boolean }) {
   const s = S.settings;
@@ -16,6 +36,7 @@ export function Lobby({ S, local }: { S: LobbyView; local: boolean }) {
   return (
     <div id="lobby" className="card">
       {S.notice && <p className="note">{S.notice}</p>}
+      {!local && <PenColor S={S} />}
       {host ? (
         <>
           <div className="settings">

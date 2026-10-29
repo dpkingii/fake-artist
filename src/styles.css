@@ -182,6 +182,13 @@ button.blue { background: #7a9fd4; font-size: 19px; }
 #bar { order: 0; } #controls { order: 1; } #stage { order: 2; } #ink { order: 3; } #brushes { order: 4; }
 #ink, #brushes { width: min(100%, calc(50vh * 4 / 3)); margin-inline: auto; }
 #tools:not(:has(> :not([hidden]))) { display: none; }
+@media (max-width: 899px) {
+  #room:has(#game:not([hidden])) #top { padding: 8px 10px; gap: 6px 8px; justify-content: flex-end; }
+  #room:has(#game:not([hidden])) #codestat, #room:has(#game:not([hidden])) #plabel { display: none; }
+  #room:has(#game:not([hidden])) #top .stat.grow { flex-basis: 100%; border-left: 0; padding-left: 0; }
+  #room:has(#game:not([hidden])) #players { gap: 6px; }
+  #room:has(#game:not([hidden])) #players .chip { font-size: 14px; padding: 1px 10px; }
+}
 @media (min-width: 900px) {
   #wrap:has(#game:not([hidden])) { max-width: 1500px; padding-top: 10px; }
   #wrap:has(#game:not([hidden])) .loghead { display: none; }

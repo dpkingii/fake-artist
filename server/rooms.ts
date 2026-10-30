@@ -3,6 +3,7 @@ import type { WebSocket } from 'ws';
 import WORDS from './words.js';
 import {
   AVATAR_PARTS,
+  CATEGORIES,
   H,
   MAX_PLAYERS,
   MIN_PLAYERS,
@@ -10,9 +11,12 @@ import {
   SKINS,
   TIMER_CHOICES,
   W,
+  catRevealSecs,
   clamp,
   round1,
   type Avatar,
+  type CatVote,
+  type Category,
   type ClientMsg,
   type EnterMsg,
   type GameResult,
@@ -48,10 +52,14 @@ interface Room {
   settings: Settings;
   gameNo: number;
   phase: Phase;
+  picking: boolean;
+  catVotes: Record<string, CatVote>;
   notice: string | null;
   timer: NodeJS.Timeout | null;
   deadline: number | null;
   category: string;
+  catPool: Category[];
+  finalCatVotes: Record<string, CatVote>;
   word: string;
   imposterId: string;
   order: string[];
@@ -73,7 +81,8 @@ type Sock = WebSocket & { room?: Room; player?: Player };
 const rooms = new Map<string, Room>();
 
 const pick = <T>(arr: T[]): T => arr[Math.floor(Math.random() * arr.length)]!;
-const norm = (s: unknown) => String(s ?? '').trim().toLowerCase();
+// Ignores case, spacing and punctuation so multi-word answers like "spy x family" match "Spy×Family" or "spyxfamily".
+const norm = (s: unknown) => String(s ?? '').toLowerCase().replace(/[^a-z0-9]/g, '');
 
 function shuffle<T>(arr: T[]): T[] {
   const a = [...arr];
@@ -108,13 +117,15 @@ function viewFor(room: Room, p: Player): StateView {
     gameNo: room.gameNo,
     msLeft: room.deadline ? Math.max(0, room.deadline - Date.now()) : null,
   };
-  if (room.phase === 'lobby') return { ...base, phase: 'lobby' };
+  if (room.phase === 'lobby') return { ...base, phase: 'lobby', picking: room.picking, catVotes: { ...room.catVotes } };
 
   const isImposter = p.id === room.imposterId;
   const view: GameView = {
     ...base,
     phase: room.phase,
     category: room.category,
+    catPool: room.catPool,
+    catVotes: room.finalCatVotes,
     isImposter,
     word: isImposter && room.phase !== 'result' ? null : room.word,
     imposterId: room.phase === 'guess' ? room.imposterId : null,
@@ -161,13 +172,34 @@ function schedule(room: Room, secs: number, onExpire: () => void) {
 function resetToLobby(room: Room) {
   clearTimer(room);
   room.phase = 'lobby';
+  room.picking = false;
+  room.catVotes = {};
   room.notice = null;
 }
 
+// The categories still in the running: the top-voted ones, or every category if Random is among them or nobody voted.
+// Clients spin through this pool when it has more than one entry.
+function categoryPool(room: Room): Category[] {
+  const tally: Partial<Record<CatVote, number>> = {};
+  for (const c of Object.values(room.catVotes)) tally[c] = (tally[c] || 0) + 1;
+  const max = Math.max(0, ...Object.values(tally));
+  const top = (Object.keys(tally) as CatVote[]).filter((c) => tally[c] === max);
+  return !top.length || top.includes('random') ? [...CATEGORIES] : (top as Category[]);
+}
+
+function startIfAllVoted(room: Room) {
+  if (room.picking && room.players.length >= MIN_PLAYERS && room.players.every((q) => q.id in room.catVotes)) startGame(room);
+}
+
 function startGame(room: Room) {
+  room.catPool = categoryPool(room);
+  const cat = pick(room.catPool);
+  room.finalCatVotes = room.catVotes;
+  room.picking = false;
+  room.catVotes = {};
   room.gameNo++;
-  room.category = pick(Object.keys(WORDS));
-  room.word = pick(WORDS[room.category]!);
+  room.category = cat;
+  room.word = pick(WORDS[cat]);
   room.imposterId = pick(room.players).id;
   room.order = shuffle(room.players.map((p) => p.id));
   room.turnIdx = 0;
@@ -180,15 +212,15 @@ function startGame(room: Room) {
   room.result = null;
   room.notice = null;
   room.phase = 'drawing';
-  beginTurn(room);
+  beginTurn(room, catRevealSecs(room.catPool.length));
 }
 
-function beginTurn(room: Room) {
+function beginTurn(room: Room, extraSecs = 0) {
   room.turnNo++;
   room.inkLeft = room.settings.mode === 'budget' ? room.settings.budget : null;
   room.strokesThisTurn = 0;
   room.cur = null;
-  schedule(room, room.settings.timer, () => endTurn(room));
+  schedule(room, room.settings.timer + extraSecs, () => endTurn(room));
 }
 
 function toVoting(room: Room) {
@@ -321,13 +353,17 @@ function enter(ws: Sock, m: EnterMsg) {
       code: makeCode(),
       hostId: '',
       players: [],
-      settings: { mode: 'budget', budget: 800, rounds: 2, colors: true, timer: 30 },
+      settings: { mode: 'free', budget: 800, rounds: 0, colors: false, timer: 15 },
       gameNo: 0,
       phase: 'lobby',
+      picking: false,
+      catVotes: {},
       notice: null,
       timer: null,
       deadline: null,
       category: '',
+      catPool: [],
+      finalCatVotes: {},
       word: '',
       imposterId: '',
       order: [],
@@ -381,6 +417,7 @@ function leave(ws: Sock) {
   const p = ws.player;
   if (!room || !p) return;
   room.players = room.players.filter((q) => q !== p);
+  delete room.catVotes[p.id];
   if (!room.players.length) {
     clearTimer(room);
     rooms.delete(room.code);
@@ -390,7 +427,7 @@ function leave(ws: Sock) {
   if (room.phase !== 'lobby') {
     resetToLobby(room);
     room.notice = `${p.name} left, so the game was reset.`;
-  }
+  } else startIfAllVoted(room);
   broadcast(room);
 }
 
@@ -403,7 +440,7 @@ function handle(ws: Sock, m: ClientMsg) {
 
   switch (m.t) {
     case 'settings': {
-      if (!isHost || room.phase !== 'lobby') return;
+      if (!isHost || room.phase !== 'lobby' || room.picking) return;
       const s = room.settings;
       if (m.mode && ['budget', 'free', 'single'].includes(m.mode)) s.mode = m.mode;
       if (typeof m.colors === 'boolean') s.colors = m.colors;
@@ -419,8 +456,19 @@ function handle(ws: Sock, m: ClientMsg) {
       p.color = want;
       return broadcast(room);
     }
+    case 'picking':
+      if (!isHost || room.phase !== 'lobby' || (m.open && room.players.length < MIN_PLAYERS)) return;
+      room.picking = Boolean(m.open);
+      room.catVotes = {};
+      return broadcast(room);
+    case 'catVote':
+      if (room.phase !== 'lobby' || !room.picking) return;
+      if (m.category !== 'random' && !CATEGORIES.includes(m.category)) return;
+      room.catVotes[p.id] = m.category;
+      startIfAllVoted(room);
+      return broadcast(room);
     case 'start':
-      if (!isHost || room.phase !== 'lobby' || room.players.length < MIN_PLAYERS) return;
+      if (!isHost || room.phase !== 'lobby' || !room.picking || room.players.length < MIN_PLAYERS) return;
       startGame(room);
       return broadcast(room);
     case 'stroke':

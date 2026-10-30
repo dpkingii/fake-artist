@@ -50,10 +50,14 @@ button.icon { padding: 4px 10px; box-shadow: 0 3px 0 var(--ink); }
 .stat small { font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: .08em; opacity: .6; }
 #top.local .stat.grow { border-left: 0; padding-left: 0; }
 .stat.grow { flex: 1 1 200px; min-width: 0; border-left: 3px solid #e6e3ee; padding-left: 14px; }
-.settings { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 14px; }
-.field { display: flex; flex-direction: column; gap: 4px; font-weight: 600; font-size: 14px; }
+.settings { display: flex; flex-wrap: wrap; gap: 14px; }
+.field { flex: 1 1 170px; display: flex; flex-direction: column; gap: 4px; font-weight: 600; font-size: 14px; }
 .field select { width: 100%; font-weight: 400; font-size: 16px; }
-.field.wide { grid-column: 1 / -1; }
+.field.wide { flex-basis: 100%; }
+/* Wide enough for four columns: keep each field one column wide and let the last one (Rounds) take the rest of its row. */
+@media (min-width: 788px) {
+  .settings > .field:not(.wide):not(:last-child) { flex: 0 0 calc((100% - 42px) / 4); }
+}
 .pills { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 12px; }
 .pill { background: #ebeaf7; border: 3px solid var(--ink); border-radius: 999px; padding: 2px 12px; font-weight: 600; }
 .start { width: 100%; margin-top: 16px; font-size: 20px; }
@@ -253,3 +257,36 @@ button.blue { background: #7a9fd4; font-size: 19px; }
 .penrow { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-bottom: 14px; font-weight: 600; font-size: 14px; }
 .penrow .sw { width: 26px; height: 26px; }
 .sw:disabled { opacity: .25; cursor: not-allowed; transform: none; }
+
+.catgrid { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 14px; margin: 14px 0 6px; }
+button.cat, .cat {
+  position: relative; overflow: hidden; min-height: 112px; padding: 10px; border-radius: 16px; font-size: 22px;
+  background: var(--c, #fffcf5); color: #fff; display: grid; place-items: center;
+  text-shadow: 0 1px 0 var(--ink), 1px 0 0 var(--ink), -1px 0 0 var(--ink), 0 -1px 0 var(--ink);
+}
+.catart { position: absolute; top: 50%; left: 50%; width: 92px; height: 92px; transform: translate(-50%, -50%) rotate(-6deg); opacity: .3; pointer-events: none; }
+.catname { position: relative; }
+button.cat.random { background: #fffcf5; color: var(--ink); text-shadow: none; border-style: dashed; }
+button.cat.random .catart { opacity: .2; }
+button.cat.sel, button.cat.sel:hover:not(:disabled) { box-shadow: 0 0 0 4px var(--yellow), 0 6px 0 var(--ink); transform: translateY(-2px) rotate(-1.5deg); }
+.voters { position: absolute; left: 6px; right: 6px; bottom: 6px; display: flex; flex-wrap: wrap; justify-content: center; gap: 2px; }
+.voters .av { width: 1.6em; height: 1.6em; font-size: 16px; animation: pop .25s cubic-bezier(.3, 1.8, .5, 1); }
+.voterow { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; font-weight: 600; font-size: 14px; }
+button.chipbtn { padding: 0; border: 0; background: none; box-shadow: none; border-radius: 999px; }
+button.chipbtn:hover:not(:disabled), button.chipbtn:active:not(:disabled) { box-shadow: none; }
+button.chipbtn.sel .chip { box-shadow: 0 0 0 4px var(--yellow); }
+#catpick .row .start { flex: 1; width: auto; margin-top: 0; }
+
+.catreveal-bg { animation: fadein .3s ease-out; transition: opacity .3s ease-in; }
+.catreveal-bg.closing { opacity: 0; }
+.catreveal { width: min(100%, 360px); text-align: center; animation: rise .35s cubic-bezier(.2, .8, .2, 1); }
+.catreveal h2 { margin: 0 0 14px; font-size: 26px; }
+.catreveal .cat { min-height: 180px; margin: 0 auto 6px; border: 3px solid var(--ink); box-shadow: 0 0 0 0 var(--yellow), 0 6px 0 var(--ink); font-size: 38px; font-weight: 700; transition: background-color .15s, box-shadow .3s; }
+.catreveal .catart { width: 150px; height: 150px; }
+.reel { position: absolute; inset: 0; display: grid; place-items: center; }
+.reel.spin { animation: tick .12s ease-out; }
+.catreveal .cat.landed { box-shadow: 0 0 0 5px var(--yellow), 0 6px 0 var(--ink); animation: settle .45s ease-out; }
+@keyframes fadein { from { opacity: 0; } }
+@keyframes rise { from { opacity: 0; transform: translateY(16px) scale(.96); } }
+@keyframes tick { from { transform: translateY(-18%); opacity: .5; } }
+@keyframes settle { 40% { transform: scale(1.05); } }

@@ -198,6 +198,11 @@ class Net {
     if (ws && ws.readyState === 1) ws.send(JSON.stringify(msg));
   }
 
+  sendAs(playerId: string, msg: ClientMsg) {
+    const ws = this.conns.find((c) => c.S?.you === playerId)?.ws;
+    if (ws && ws.readyState === 1) ws.send(JSON.stringify(msg));
+  }
+
   doneVote(yes: boolean) {
     const voters = this.local ? this.conns : [this.conns[this.active]!];
     voters.forEach((c) => c.ws.send(JSON.stringify({ t: 'doneVote', yes })));

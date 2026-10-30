@@ -1,6 +1,7 @@
 import type { ReactNode } from 'react';
 import { net } from '../net';
 import { PEN_COLORS, type LobbyView, type Mode } from '../../shared/protocol';
+import { CategoryPick } from './CategoryPick';
 
 const MODE_NAMES: Record<Mode, string> = { budget: 'Ink budget', free: 'Free whiteboard', single: 'One stroke each' };
 
@@ -32,6 +33,9 @@ export function Lobby({ S, local }: { S: LobbyView; local: boolean }) {
   const s = S.settings;
   const host = S.you === S.hostId;
   const num = (key: 'timer' | 'budget' | 'rounds') => (e: { target: { value: string } }) => net.send({ t: 'settings', [key]: Number(e.target.value) });
+  const enough = S.players.length >= 3;
+
+  if (S.picking) return <CategoryPick S={S} local={local} />;
 
   return (
     <div id="lobby" className="card">
@@ -74,12 +78,12 @@ export function Lobby({ S, local }: { S: LobbyView; local: boolean }) {
             )}
             <Field label="Rounds">
               <select value={s.rounds} onChange={num('rounds')}>
-                {[1, 2, 3, 4].map((n) => <option key={n} value={n}>{n}</option>)}
                 <option value={0}>Until players vote to end</option>
+                {[1, 2, 3, 4].map((n) => <option key={n} value={n}>{n}</option>)}
               </select>
             </Field>
           </div>
-          <button className="start" disabled={S.players.length < 3} onClick={() => net.send({ t: 'start' })}>Start game</button>
+          <button className="start" disabled={!enough} onClick={() => net.send({ t: 'picking', open: true })}>Next: vote on a category</button>
         </>
       ) : (
         <>
@@ -92,7 +96,7 @@ export function Lobby({ S, local }: { S: LobbyView; local: boolean }) {
           <p>Waiting for the host to start...</p>
         </>
       )}
-      {S.players.length < 3 && !local && <p className="muted">Need at least 3 players. Share room code <b>{S.code}</b>.</p>}
+      {!enough && !local && <p className="muted">Need at least 3 players. Share room code <b>{S.code}</b>.</p>}
     </div>
   );
 }

@@ -3,6 +3,9 @@ export const H = 600;
 export const MIN_PLAYERS = 3;
 export const MAX_PLAYERS = 8;
 export const TIMER_CHOICES = [0, 15, 30, 60];
+// A spin through several categories needs longer on screen than a single reveal.
+export const catRevealSecs = (poolSize: number) => (poolSize > 1 ? 5 : 3);
+export const CATEGORIES = ['Animals', 'Food', 'Nature', 'Landmarks', 'Countries', 'Sports', 'Fantasy', 'Famous People', 'Characters', 'League of Legends', 'Anime'] as const;
 
 export const PEN_COLORS = ['#d8607a', '#5fae6e', '#6a82cc', '#e09a5c', '#9a69b3', '#4f9a9a', '#a08060', '#cf7fc0'];
 export const SKINS = ['#f28b82', '#f6b26b', '#f3d77a', '#9bd77f', '#7ed3ac', '#7fb8ec', '#b3a1ee', '#f29bd6'];
@@ -11,6 +14,8 @@ export const AVATAR_PARTS = [6, 6, 5] as const;
 export const round1 = (n: number) => Math.round(n * 10) / 10;
 export const clamp = (n: number, lo: number, hi: number) => Math.min(hi, Math.max(lo, n));
 
+export type Category = (typeof CATEGORIES)[number];
+export type CatVote = Category | 'random';
 export type Avatar = [color: string, eyes: number, mouth: number, accessory: number];
 export type Mode = 'budget' | 'free' | 'single';
 export type Phase = 'lobby' | 'drawing' | 'doneVote' | 'voting' | 'guess' | 'result';
@@ -62,11 +67,15 @@ interface BaseView {
 
 export interface LobbyView extends BaseView {
   phase: 'lobby';
+  picking: boolean;
+  catVotes: Record<string, CatVote>;
 }
 
 export interface GameView extends BaseView {
   phase: Exclude<Phase, 'lobby'>;
   category: string;
+  catPool: Category[];
+  catVotes: Record<string, CatVote>;
   isImposter: boolean;
   word: string | null;
   imposterId: string | null;
@@ -111,6 +120,8 @@ export type ClientMsg =
   | EnterMsg
   | ({ t: 'settings' } & Partial<Settings>)
   | { t: 'color'; color: string }
+  | { t: 'picking'; open: boolean }
+  | { t: 'catVote'; category: CatVote }
   | { t: 'start' }
   | { t: 'stroke'; sid: string; w?: number; pts: Pt[]; end: boolean }
   | { t: 'endTurn' }

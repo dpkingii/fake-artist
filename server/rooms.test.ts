@@ -1,7 +1,7 @@
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { WebSocket } from 'ws';
 import { startServer } from './app.js';
-import type { ClientMsg, GameView, ServerMsg, Settings, StateView, StrokeRelay } from '../shared/protocol.js';
+import { CATEGORIES, catRevealSecs, type ClientMsg, type GameView, type ServerMsg, type Settings, type StateView, type StrokeRelay } from '../shared/protocol.js';
 
 let srv: Awaited<ReturnType<typeof startServer>>;
 beforeAll(async () => {
@@ -53,7 +53,8 @@ async function room(settings: Partial<Settings> = {}, start = true) {
   await until(() => a.S.players.length === 3, 'players joined');
   a.send({ t: 'settings', ...settings });
   if (start) {
-    a.send({ t: 'start' });
+    a.send({ t: 'picking', open: true });
+    cs.forEach((x) => x.send({ t: 'catVote', category: 'random' }));
     await until(() => cs.every((x) => x.S.phase === 'drawing'), 'game start');
   } else await sleep(30);
   const turn = () => cs.find((x) => x.S.you === a.G.turnPlayer)!;
@@ -121,11 +122,119 @@ describe('lobby', () => {
     close();
   });
 
+  it('defaults to free whiteboard, all black, 15s turns, and voting on when to end', async () => {
+    const { a, close } = await room({}, false);
+    expect(a.S.settings.mode).toBe('free');
+    expect(a.S.settings.colors).toBe(false);
+    expect(a.S.settings.timer).toBe(15);
+    expect(a.S.settings.rounds).toBe(0);
+    close();
+  });
+
   it('only the host can change settings', async () => {
     const { a, b, close } = await room({ rounds: 3 }, false);
     b.send({ t: 'settings', rounds: 1 });
     await sleep(50);
     expect(a.S.settings.rounds).toBe(3);
+    close();
+  });
+});
+
+describe('category', () => {
+  it('shows votes as they come in and starts with the winner once everyone has voted', async () => {
+    const { cs, a, b, c, close } = await room({}, false);
+    a.send({ t: 'picking', open: true });
+    await until(() => cs.every((x) => x.S.phase === 'lobby' && x.S.picking), 'picking');
+    a.send({ t: 'catVote', category: 'Food' });
+    b.send({ t: 'catVote', category: 'Fantasy' });
+    await until(() => c.S.phase === 'lobby' && Object.keys(c.S.catVotes).length === 2, 'votes');
+    expect(c.S.phase === 'lobby' && c.S.catVotes[b.S.you]).toBe('Fantasy');
+    c.send({ t: 'catVote', category: 'Fantasy' });
+    await until(() => cs.every((x) => x.S.phase === 'drawing'), 'game start');
+    expect(cs.every((x) => x.G.category === 'Fantasy')).toBe(true);
+    expect(a.G.catPool).toEqual(['Fantasy']);
+    expect(a.G.catVotes).toEqual({ [a.S.you]: 'Food', [b.S.you]: 'Fantasy', [c.S.you]: 'Fantasy' });
+    close();
+  });
+
+  it('ignores unknown categories and draws a real one when Random wins', async () => {
+    const { cs, a, close } = await room({}, false);
+    a.send({ t: 'picking', open: true });
+    a.send({ t: 'catVote', category: 'Nope' as never });
+    await sleep(50);
+    expect(a.S.phase === 'lobby' && a.S.catVotes).toEqual({});
+    cs.forEach((x) => x.send({ t: 'catVote', category: 'random' }));
+    await until(() => cs.every((x) => x.S.phase === 'drawing'), 'game start');
+    expect(CATEGORIES).toContain(a.G.category);
+    expect(a.G.catPool).toEqual([...CATEGORIES]);
+    close();
+  });
+
+  it('starts when the last player without a vote leaves', async () => {
+    const { cs, a, b, c, close } = await room({}, false);
+    const d = new Client();
+    await d.ready;
+    d.send({ t: 'join', code: a.S.code, name: 'dee' });
+    await until(() => a.S.players.length === 4, 'joined');
+    a.send({ t: 'picking', open: true });
+    [a, b, c].forEach((x) => x.send({ t: 'catVote', category: 'Nature' }));
+    await until(() => a.S.phase === 'lobby' && Object.keys(a.S.catVotes).length === 3, 'votes');
+    d.ws.close();
+    await until(() => cs.every((x) => x.S.phase === 'drawing'), 'game start');
+    expect(a.G.category).toBe('Nature');
+    close();
+  });
+});
+
+describe('category start', () => {
+  it('draws from the tied categories and adds reveal time to the first turn', async () => {
+    const { cs, a, b, c, close } = await room({ timer: 15 }, false);
+    a.send({ t: 'picking', open: true });
+    a.send({ t: 'catVote', category: 'Food' });
+    b.send({ t: 'catVote', category: 'Landmarks' });
+    c.send({ t: 'catVote', category: 'Sports' });
+    await until(() => cs.every((x) => x.S.phase === 'drawing'), 'game start');
+    expect([...a.G.catPool].sort()).toEqual(['Food', 'Landmarks', 'Sports']);
+    expect(a.G.catPool).toContain(a.G.category);
+    expect(a.G.msLeft!).toBeGreaterThan(15_000);
+    close();
+  });
+
+  it('lets the host start before everyone has voted', async () => {
+    const { cs, a, b, close } = await room({}, false);
+    a.send({ t: 'picking', open: true });
+    b.send({ t: 'catVote', category: 'Sports' });
+    await until(() => a.S.phase === 'lobby' && Object.keys(a.S.catVotes).length === 1, 'vote');
+    b.send({ t: 'start' });
+    await sleep(50);
+    expect(a.S.phase).toBe('lobby');
+    a.send({ t: 'start' });
+    await until(() => cs.every((x) => x.S.phase === 'drawing'), 'game start');
+    expect(a.G.category).toBe('Sports');
+    close();
+  });
+});
+
+describe('guessing', () => {
+  it('accepts the word regardless of case, spacing and punctuation', async () => {
+    const { cs, a, turn, close } = await room({ mode: 'free', rounds: 1, timer: 0 }, false);
+    a.send({ t: 'picking', open: true });
+    cs.forEach((x) => x.send({ t: 'catVote', category: 'Anime' }));
+    await until(() => cs.every((x) => x.S.phase === 'drawing'), 'game start');
+    for (let i = 0; i < 3; i++) {
+      const before = a.G.turnNo;
+      turn().send({ t: 'endTurn' });
+      await until(() => a.G.turnNo !== before || a.G.phase === 'voting', 'next turn');
+    }
+    const imp = cs.find((c) => c.G.isImposter)!;
+    const others = cs.filter((c) => c !== imp);
+    const word = others[0]!.G.word!;
+    others.forEach((c) => c.send({ t: 'vote', target: imp.S.you }));
+    imp.send({ t: 'vote', target: others[0]!.S.you });
+    await until(() => a.S.phase === 'guess', 'guess phase');
+    imp.send({ t: 'guess', guess: ` ${word.toUpperCase().replace(/ /g, '')}! ` });
+    await until(() => a.S.phase === 'result', 'result');
+    expect(a.G.result!.imposterWins).toBe(true);
     close();
   });
 });
@@ -274,9 +383,9 @@ describe('disconnects and timers', () => {
     const { a, close } = await room({ mode: 'single', timer: 15 });
     expect(a.S.msLeft).toBeGreaterThan(13000);
     const first = a.G.turnPlayer;
-    await until(() => a.G.turnPlayer !== first, 'timer expiry', 16500);
+    await until(() => a.G.turnPlayer !== first, 'timer expiry', 15000 + catRevealSecs(CATEGORIES.length) * 1000 + 1500);
     expect(a.G.strokes).toHaveLength(0);
     expect(a.G.turnNo).toBe(2);
     close();
-  }, 20000);
+  }, 26000);
 });

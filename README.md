@@ -14,6 +14,17 @@ A multiplayer drawing and deduction game, in the spirit of *A Fake Artist Goes t
 | **Voting** | **Result** |
 | ![Voting for the fake artist](docs/voting.jpg) | ![Result with the revealed word and fake artist](docs/result.jpg) |
 
+## How a game works
+
+1. **Set up.** The host picks a drawing mode, stroke colors, a turn timer, and how many rounds to play. By default it's a free whiteboard in all black with 15 second turns, and drawing continues until a majority votes that the picture is done.
+2. **Vote on a category.** Everyone votes at the same time, and each tile shows who voted for it. The game starts as soon as everyone has voted, or when the host starts it early. Most votes wins. A tie, or a win for **Random**, spins a reel that lands on the category.
+3. **Draw.** Players take turns adding to one canvas. The fake artist only sees the category.
+4. **Find the fake.** Everyone votes on who the fake artist is. If they're caught, they get one guess at the word to steal the win. Guesses ignore case, spacing, and punctuation.
+
+**Categories:** Animals, Food, Nature, Landmarks, Countries, Sports, Fantasy, Famous People, Characters, League of Legends, and Anime. Word lists live in `server/words.ts`, and the tile art lives in `src/catArt.tsx`.
+
+**Drawing modes:** free whiteboard (draw freely, end your own turn), ink budget (limited ink per turn), or one stroke each.
+
 ## Tech stack
 
 - **Client:** React 19 + TypeScript, built with Vite (`src/`). Drawing uses the HTML canvas at the display's native resolution.

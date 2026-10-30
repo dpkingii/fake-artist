@@ -5,13 +5,15 @@ export function Help({ onClose }: { onClose: () => void }) {
         <button className="alt x" onClick={onClose} aria-label="Close">&times;</button>
         <h2>How to play</h2>
         <p>Everyone builds one drawing together. All but one player know the secret word. The <b>fake artist</b> only knows the category and has to bluff.</p>
+        <h3>Category</h3>
+        <p>After the host sets up the game, everyone votes on a category (or Random) and can see who voted for what. The game starts as soon as everyone has voted, or earlier if the host starts it. The most votes wins and ties are broken at random. The secret word comes from that category.</p>
         <h3>Each turn</h3>
         <ul>
           <li>Players take turns adding to the shared canvas. Draw enough to show you know the word, but not so much that the fake artist can work it out.</li>
           <li><b>Ink budget mode:</b> each turn you get a limited amount of ink and can draw several strokes until it runs out.</li>
           <li><b>Free whiteboard mode:</b> draw as much as you like on your turn, then tap End turn.</li>
           <li><b>One stroke each mode:</b> one stroke per turn, any length.</li>
-          <li><b>Rounds:</b> the host can set a fixed number of rounds, or pick "Until players vote to end". Then everyone votes after each round on whether the drawing is done, and a majority of yes ends it. During a round, tap Finish drawing to vote to stop early. If a majority of players do, it goes straight to the vote on who the fake is. Tap again to take your vote back.</li>
+          <li><b>Rounds:</b> by default the game runs "Until players vote to end", or the host can set a fixed number of rounds. With voting, everyone votes after each round on whether the drawing is done, and a majority of yes ends it. During a round, tap Finish drawing to vote to stop early. If a majority of players do, it goes straight to the vote on who the fake is. Tap again to take your vote back.</li>
         </ul>
         <h3>Vote</h3>
         <p>When drawing ends, everyone secretly votes for who they think the fake artist is. A tie lets the fake artist escape.</p>

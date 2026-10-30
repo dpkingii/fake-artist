@@ -6,6 +6,8 @@ import { useReveal } from '../reveal';
 import { MutedIcon, SoundIcon } from '../icons';
 import { turnKey } from './Canvas';
 import { Cards } from './Cards';
+import { CategoryPick } from './CategoryPick';
+import { CategoryReveal } from './CategoryReveal';
 import { Game, type Stage } from './Game';
 import { Lobby } from './Lobby';
 import { PlayerChips } from './PlayerChips';
@@ -49,6 +51,8 @@ export function Room({ n, onHelp }: { n: NetSnapshot; onHelp: () => void }) {
   const [cardsDone, setCardsDone] = useState(-1);
   const [pausedKey, setPausedKey] = useState<string | null>(null);
   const [passedKey, setPassedKey] = useState<string | null>(null);
+  const [catShown, setCatShown] = useState(0);
+  const revealing = S.phase !== 'lobby' && catShown < S.gameNo;
 
   const key = S.phase === 'lobby' ? '' : turnKey(S);
   const gateKey = `${S.gameNo}:${S.phase}:${S.phase === 'lobby' ? '' : S.turnNo}:${active}`;
@@ -68,10 +72,19 @@ export function Room({ n, onHelp }: { n: NetSnapshot; onHelp: () => void }) {
   return (
     <section id="room">
       <TopBar S={S} local={local} onHelp={onHelp} />
-      {stage === 'cards' && <Cards key={S.gameNo} states={n.connStates as GameView[]} onDone={() => setCardsDone(S.gameNo)} />}
-      {S.phase === 'lobby' && <Lobby S={S} local={local} />}
-      {S.phase !== 'lobby' && stage !== 'cards' && (
-        <Game S={S} deadline={n.deadline} local={local} quick={quick} stage={stage} reveal={reveal} onPass={() => setPassedKey(gateKey)} />
+      {revealing ? (
+        <>
+          <CategoryPick S={S} local={local} />
+          <CategoryReveal key={S.gameNo} S={S} onDone={() => setCatShown(S.gameNo)} />
+        </>
+      ) : (
+        <>
+          {stage === 'cards' && <Cards key={S.gameNo} states={n.connStates as GameView[]} onDone={() => setCardsDone(S.gameNo)} />}
+          {S.phase === 'lobby' && <Lobby S={S} local={local} />}
+          {S.phase !== 'lobby' && stage !== 'cards' && (
+            <Game S={S} deadline={n.deadline} local={local} quick={quick} stage={stage} reveal={reveal} onPass={() => setPassedKey(gateKey)} />
+          )}
+        </>
       )}
     </section>
   );
